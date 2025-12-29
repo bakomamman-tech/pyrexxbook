@@ -1,0 +1,48 @@
+{
+  "users": [
+    {
+      "id": 1766827598510,
+      "name": "Stephen Daniel Mamman",
+      "email": "tmintdo4_life@yahoo.com",
+      "password": "Boldness_atama86",
+      "avatar": "/uploads/1766849449182.jpg",
+      "bio": "My name is Stephen Danile Kurah, I am a 39 year old School Proprietor based in Kaduna State, Nigeria."
+    }
+  ],
+  "posts": [
+    {
+      "id": 1766932547868,
+      "name": "Stephen Daniel Mamman",
+      "avatar": "/uploads/1766849449182.jpg",
+      "text": "Hello Nomzi",
+      "time": "12/28/2025, 3:35:47 PM",
+      "likes": [
+        1766827598510
+      ],
+      "comments": []
+    },
+    {
+      "id": 1766929710267,
+      "name": "Stephen Daniel Mamman",
+      "avatar": "/uploads/1766849449182.jpg",
+      "text": "Happy Sunday friends\n",
+      "time": "12/28/2025, 2:48:30 PM",
+      "likes": [
+        1766827598510
+      ],
+      "comments": []
+    },
+    {
+      "id": 1766853099895,
+      "name": "Stephen Daniel Mamman",
+      "avatar": "/uploads/1766849449182.jpg",
+      "text": "I love my family",
+      "time": "12/27/2025, 5:31:39 PM",
+      "likes": [
+        1766827598510,
+        1
+      ],
+      "comments": []
+    }
+  ]
+}
