@@ -38,7 +38,7 @@ function Feed() {
   ];
 
   const loadPosts = () => {
-    fetch("http://localhost:5000/api/posts")
+    fetch("https://pyrexxbook-backend.onrender.com/api/posts")
       .then(res => res.json())
       .then(data => setPosts(data || []));
   };
@@ -54,7 +54,7 @@ function Feed() {
   const createPost = () => {
     if (!text.trim()) return;
 
-    fetch("http://localhost:5000/api/posts", {
+    fetch("https://pyrexxbook-backend.onrender.com/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -69,7 +69,7 @@ function Feed() {
   };
 
   const likePost = (id) => {
-    fetch(`http://localhost:5000/api/posts/${id}/like`, {
+    fetch(`https://pyrexxbook-backend.onrender.com/api/posts/${id}/like`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id })
@@ -93,7 +93,7 @@ function Feed() {
       }}
     >
       {i === 0 ? (
-        <img src={`http://localhost:5000${user.avatar}`} />
+        <img src={`https://pyrexxbook-backend.onrender.com${user.avatar}`} />
       ) : (
         <img src={s.image} />
       )}
@@ -105,7 +105,7 @@ function Feed() {
 
       {/* CREATE POST */}
       <div className="create-post">
-        <img src={`http://localhost:5000${user.avatar}`} />
+        <img src={`https://pyrexxbook-backend.onrender.com${user.avatar}`} />
         <textarea
           placeholder={`What's on your mind, ${user.name}?`}
           value={text}
@@ -118,7 +118,7 @@ function Feed() {
       {posts.map(post => (
         <div className="post" key={post.id}>
           <div className="post-header">
-            <img src={`http://localhost:5000${post.avatar}`} />
+            <img src={`https://pyrexxbook-backend.onrender.com${post.avatar}`} />
             <div>
               <div className="post-name">{post.name}</div>
 
