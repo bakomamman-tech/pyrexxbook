@@ -180,6 +180,28 @@ app.post("/api/users/:id/avatar", avatarUpload.single("avatar"), (req, res) => {
   res.json(user);
 });
 
+/* ================= COVER PHOTO UPLOAD ================= */
+
+const coverUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) =>
+      cb(null, "cover_" + Date.now() + path.extname(file.originalname))
+  })
+});
+
+app.post("/api/users/:id/cover", coverUpload.single("cover"), (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.id == req.params.id);
+
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  user.cover = "/uploads/" + req.file.filename;
+  writeDB(db);
+
+  res.json(user);
+});
+
 /* ================= START SERVER ================= */
 
 app.listen(5000, () => {
