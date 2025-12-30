@@ -1,5 +1,5 @@
 import "./StoryModal.css";
-import { API } from "../utils/api";
+import API_BASE from "../utils/api";
 
 function StoryModal({ stories, storyIndex, setShowStory }) {
   const story = stories[storyIndex];
@@ -10,7 +10,7 @@ function StoryModal({ stories, storyIndex, setShowStory }) {
     story.image && story.image !== "null" && story.image !== "undefined"
       ? story.image.startsWith("http")
         ? story.image
-        : `${API}/${story.image}`
+        : `${API_BASE}${story.image}`
       : `https://ui-avatars.com/api/?name=${encodeURIComponent(
           story.name || "User"
         )}&background=1877f2&color=fff`;
