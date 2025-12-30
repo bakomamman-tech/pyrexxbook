@@ -1,3 +1,4 @@
+import API_BASE from "../utils/api";
 import { useState } from "react";
 
 function ProfileCard() {
@@ -12,7 +13,7 @@ function ProfileCard() {
   const saveBio = () => {
     setSaving(true);
 
-    fetch("http://localhost:5000/api/users/bio", {
+    fetch(`${API_BASE}/api/users/bio`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id, bio })
@@ -33,7 +34,7 @@ function ProfileCard() {
     const formData = new FormData();
     formData.append("avatar", file);
 
-    fetch(`http://localhost:5000/api/users/${user.id}/avatar`, {
+    fetch(`${API_BASE}/api/users/${user.id}/avatar`, {
       method: "POST",
       body: formData
     })
@@ -56,7 +57,7 @@ function ProfileCard() {
       
       {/* Profile picture */}
       <img
-        src={`http://localhost:5000${user.avatar}`}
+        src={`${API_BASE}${user.avatar}`}
         width="80"
         height="80"
         style={{ borderRadius: "50%", objectFit: "cover" }}
