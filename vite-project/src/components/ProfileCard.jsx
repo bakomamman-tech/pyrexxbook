@@ -9,20 +9,34 @@ function ProfileCard() {
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
 
+  // Load user by username
   useEffect(() => {
     fetch(`${API_BASE}/api/users/${username}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("User not found");
+        }
+        return res.json();
+      })
       .then(data => {
         setUser(data);
         setBio(data.bio || "");
+      })
+      .catch(err => {
+        console.error(err);
+        setError("Profile not found");
       });
   }, [username]);
 
-  if (!user) return <h2>Loading profile...</h2>;
+  // 🔥 Diagnostic output
+  if (error) return <h1 style={{ color: "red" }}>{error}</h1>;
+  if (!user) return <h1 style={{ color: "blue" }}>Loading profile...</h1>;
 
   const saveBio = () => {
     setSaving(true);
+
     fetch(`${API_BASE}/api/users/bio`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -32,7 +46,8 @@ function ProfileCard() {
       .then(updated => {
         setUser(updated);
         setSaving(false);
-      });
+      })
+      .catch(() => setSaving(false));
   };
 
   const uploadAvatar = () => {
@@ -50,19 +65,24 @@ function ProfileCard() {
       .then(updated => {
         setUser(updated);
         setUploading(false);
-      });
+      })
+      .catch(() => setUploading(false));
   };
 
   return (
     <div style={{ background: "white", padding: 20 }}>
+      <h1 style={{ color: "green" }}>PROFILE PAGE LOADED</h1>
+
       <img
         src={`${API_BASE}${user.avatar}`}
-        width="100"
-        height="100"
+        width="120"
+        height="120"
         style={{ borderRadius: "50%", objectFit: "cover" }}
       />
 
-      <h2>{user.name} <small>@{user.username}</small></h2>
+      <h2>
+        {user.name} <small>@{user.username}</small>
+      </h2>
 
       <textarea
         value={bio}
