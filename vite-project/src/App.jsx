@@ -1,3 +1,4 @@
+import { Outlet } from "react-router-dom";
 import Feed from "./Feed";
 import Login from "./components/Login";
 import Navbar from "./components/Navbar";
@@ -26,7 +27,10 @@ function App() {
         minHeight: "100vh"
       }}>
         <Sidebar />
-        <Feed />
+
+        {/* 🔥 Router will render Feed OR Profile here */}
+        <Outlet />
+
         <div />
       </div>
     </>
