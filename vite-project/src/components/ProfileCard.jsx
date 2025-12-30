@@ -6,6 +6,8 @@ function ProfileCard() {
   );
   const [bio, setBio] = useState(user.bio || "");
   const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const saveBio = () => {
     setSaving(true);
@@ -23,6 +25,26 @@ function ProfileCard() {
       });
   };
 
+  const uploadAvatar = () => {
+    if (!file) return alert("Choose an image first");
+
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    fetch(`http://localhost:5000/api/users/${user.id}/avatar`, {
+      method: "POST",
+      body: formData
+    })
+      .then(res => res.json())
+      .then(updated => {
+        localStorage.setItem("user", JSON.stringify(updated));
+        setUser(updated);
+        setUploading(false);
+      });
+  };
+
   return (
     <div style={{
       background: "white",
@@ -31,14 +53,43 @@ function ProfileCard() {
       boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
       marginBottom: 20
     }}>
+      
+      {/* Profile picture */}
       <img
         src={`http://localhost:5000${user.avatar}`}
         width="80"
-        style={{ borderRadius: "50%" }}
+        height="80"
+        style={{ borderRadius: "50%", objectFit: "cover" }}
       />
+
+      <br />
+
+      {/* Upload new avatar */}
+      <input
+        type="file"
+        onChange={e => setFile(e.target.files[0])}
+        style={{ marginTop: 10 }}
+      />
+
+      <button
+        onClick={uploadAvatar}
+        disabled={uploading}
+        style={{
+          marginTop: 5,
+          background: "#28a745",
+          color: "white",
+          border: "none",
+          padding: "6px 10px",
+          borderRadius: 6,
+          cursor: "pointer"
+        }}
+      >
+        {uploading ? "Uploading..." : "Change Photo"}
+      </button>
 
       <h3>{user.name}</h3>
 
+      {/* Bio editor */}
       <textarea
         value={bio}
         onChange={e => setBio(e.target.value)}
@@ -67,6 +118,7 @@ function ProfileCard() {
       >
         {saving ? "Saving..." : "Save Bio"}
       </button>
+
     </div>
   );
 }

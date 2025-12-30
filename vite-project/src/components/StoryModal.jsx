@@ -1,55 +1,35 @@
-import { useEffect, useState } from "react";
 import "./StoryModal.css";
+import { API } from "../utils/api";
 
-function StoryModal({ stories, index, onClose }) {
-  const [current, setCurrent] = useState(index);
-  const [progress, setProgress] = useState(0);
+function StoryModal({ stories, storyIndex, setShowStory }) {
+  const story = stories[storyIndex];
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) {
-          next();
-          return 0;
-        }
-        return p + 1;
-      });
-    }, 40);
+  if (!story) return null;
 
-    return () => clearInterval(timer);
-  }, [current]);
-
-  const next = () => {
-    if (current < stories.length - 1) {
-      setCurrent(current + 1);
-      setProgress(0);
-    } else {
-      onClose();
-    }
-  };
-
-  const prev = () => {
-    if (current > 0) {
-      setCurrent(current - 1);
-      setProgress(0);
-    }
-  };
+  const imageUrl =
+    story.image && story.image !== "null" && story.image !== "undefined"
+      ? story.image.startsWith("http")
+        ? story.image
+        : `${API}/${story.image}`
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          story.name || "User"
+        )}&background=1877f2&color=fff`;
 
   return (
     <div className="story-modal">
-      <div className="progress">
-        <div className="bar" style={{ width: `${progress}%` }} />
+      <div className="story-content">
+        <img
+          src={imageUrl}
+          alt={story.name}
+          onError={(e) => {
+            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              story.name || "User"
+            )}&background=1877f2&color=fff`;
+          }}
+        />
+        <h3>{story.name}</h3>
+        <button onClick={() => setShowStory(false)}>✕</button>
       </div>
-
-      <img src={stories[current].image} className="story-img" />
-
-      <div className="story-name-full">
-        {stories[current].name}
-      </div>
-
-      <div className="left" onClick={prev}></div>
-      <div className="right" onClick={next}></div>
-      <button className="close-btn" onClick={onClose}>✕</button>
     </div>
   );
 }

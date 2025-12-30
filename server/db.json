@@ -3,45 +3,47 @@
     {
       "id": 1766827598510,
       "name": "Stephen Daniel Mamman",
+      "username": "pyrexx",
       "email": "tmintdo4_life@yahoo.com",
       "password": "Boldness_atama86",
       "avatar": "/uploads/1766849449182.jpg",
-      "bio": "My name is Stephen Danile Kurah, I am a 39 year old School Proprietor based in Kaduna State, Nigeria."
+      "cover": "/uploads/cover-default.jpg",
+      "bio": "My name is Stephen Daniel Kurah. I am a school proprietor based in Kaduna State, Nigeria.",
+      "joined": "2025-12-30"
     }
   ],
   "posts": [
     {
       "id": 1766932547868,
+      "userId": 1766827598510,
       "name": "Stephen Daniel Mamman",
+      "username": "pyrexx",
       "avatar": "/uploads/1766849449182.jpg",
       "text": "Hello Nomzi",
       "time": "12/28/2025, 3:35:47 PM",
-      "likes": [
-        1766827598510
-      ],
+      "likes": [1766827598510],
       "comments": []
     },
     {
       "id": 1766929710267,
+      "userId": 1766827598510,
       "name": "Stephen Daniel Mamman",
+      "username": "pyrexx",
       "avatar": "/uploads/1766849449182.jpg",
-      "text": "Happy Sunday friends\n",
+      "text": "Happy Sunday friends",
       "time": "12/28/2025, 2:48:30 PM",
-      "likes": [
-        1766827598510
-      ],
+      "likes": [1766827598510],
       "comments": []
     },
     {
       "id": 1766853099895,
+      "userId": 1766827598510,
       "name": "Stephen Daniel Mamman",
+      "username": "pyrexx",
       "avatar": "/uploads/1766849449182.jpg",
       "text": "I love my family",
       "time": "12/27/2025, 5:31:39 PM",
-      "likes": [
-        1766827598510,
-        1
-      ],
+      "likes": [1766827598510],
       "comments": []
     }
   ]

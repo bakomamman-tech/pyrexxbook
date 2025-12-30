@@ -1,0 +1,16 @@
+.sidebar {
+  margin-right: 20px;
+}
+
+.sidebar div {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.sidebar div:hover {
+  background: #f0f2f5;
+}

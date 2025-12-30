@@ -14,6 +14,11 @@ const UPLOAD_DIR = path.join(__dirname, "uploads");
 
 // Ensure folders exist
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+if (!fs.existsSync(path.join(UPLOAD_DIR, "default.png"))) {
+  // Put ANY default avatar file here manually
+  console.log("⚠️ Place default.png inside server/uploads/");
+}
+
 if (!fs.existsSync(DB_FILE)) {
   fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], posts: [] }, null, 2));
 }
@@ -41,7 +46,8 @@ app.post("/api/auth/register", (req, res) => {
     name,
     email,
     password,
-    avatar: "/uploads/default.png"
+    avatar: "/uploads/default.png",
+    bio: ""
   };
 
   db.users.push(user);
@@ -63,12 +69,17 @@ app.post("/api/auth/login", (req, res) => {
   );
 
   if (!user) {
-    console.log("LOGIN FAILED:", cleanEmail, cleanPassword);
     return res.status(401).json({ message: "Invalid email or password" });
   }
 
+  // 🔥 Guarantee defaults
+  if (!user.avatar) user.avatar = "/uploads/default.png";
+  if (!user.bio) user.bio = "";
+
+  writeDB(db);
   res.json(user);
 });
+
 app.put("/api/users/bio", (req, res) => {
   const { userId, bio } = req.body;
   const db = readDB();
@@ -86,6 +97,12 @@ app.put("/api/users/bio", (req, res) => {
 
 app.get("/api/posts", (req, res) => {
   const db = readDB();
+
+  // 🔥 Guarantee avatar on every post
+  db.posts.forEach(post => {
+    if (!post.avatar) post.avatar = "/uploads/default.png";
+  });
+
   res.json(db.posts || []);
 });
 
@@ -96,7 +113,7 @@ app.post("/api/posts", (req, res) => {
   const post = {
     id: Date.now(),
     name,
-    avatar,
+    avatar: avatar || "/uploads/default.png",
     text,
     time: new Date().toLocaleString(),
     likes: [],
@@ -153,4 +170,32 @@ app.post("/api/upload", upload.single("image"), (req, res) => {
 
 app.listen(5000, () => {
   console.log("SERVER RUNNING ON http://localhost:5000");
+});
+
+const avatarUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, "uploads"),
+    filename: (req, file, cb) =>
+      cb(null, Date.now() + path.extname(file.originalname))
+  })
+});
+app.post("/api/users/:id/avatar", avatarUpload.single("avatar"), (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.id == req.params.id);
+
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  user.avatar = "/uploads/" + req.file.filename;
+  writeDB(db);
+
+  // Update avatar in all posts
+  db.posts.forEach(p => {
+    if (p.userId == user.id) {
+      p.avatar = user.avatar;
+    }
+  });
+
+  writeDB(db);
+
+  res.json(user);
 });

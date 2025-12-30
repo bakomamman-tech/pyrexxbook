@@ -1,9 +1,8 @@
 import ProfileCard from "./components/ProfileCard";
-
-
 import "./components/Feed.css";
 import StoryModal from "./components/StoryModal";
 import { useEffect, useState } from "react";
+import { API } from "../utils/api";
 
 function Feed() {
   const [posts, setPosts] = useState([]);
@@ -21,7 +20,7 @@ function Feed() {
   const stories = [
     {
       name: "Your story",
-      image: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe"
+      image: null
     },
     {
       name: "Grace",
@@ -38,9 +37,9 @@ function Feed() {
   ];
 
   const loadPosts = () => {
-    fetch("https://pyrexxbook-backend.onrender.com/api/posts")
-      .then(res => res.json())
-      .then(data => setPosts(data || []));
+    fetch(`${API}/api/posts`)
+      .then((res) => res.json())
+      .then((data) => setPosts(data || []));
   };
 
   useEffect(() => {
@@ -54,7 +53,7 @@ function Feed() {
   const createPost = () => {
     if (!text.trim()) return;
 
-    fetch("https://pyrexxbook-backend.onrender.com/api/posts", {
+    fetch(`${API}/api/posts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -69,64 +68,73 @@ function Feed() {
   };
 
   const likePost = (id) => {
-    fetch(`https://pyrexxbook-backend.onrender.com/api/posts/${id}/like`, {
+    fetch(`${API}/api/posts/${id}/like`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id })
     }).then(loadPosts);
   };
 
+  const avatarUrl = (name, avatar) => {
+    if (!avatar) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        name
+      )}&background=1877f2&color=fff`;
+    }
+
+    if (avatar.startsWith("http")) return avatar;
+    return `${API}${avatar}`;
+  };
+
   return (
     <div className="feed-container">
-<ProfileCard />
+      <ProfileCard />
 
       {/* STORIES */}
-     {/* STORIES */}
-<div className="stories">
-  {stories.map((s, i) => (
-    <div
-      key={i}
-      className="story"
-      onClick={() => {
-        setStoryIndex(i);
-        setShowStory(true);
-      }}
-    >
-      {i === 0 ? (
-        <img src={`https://pyrexxbook-backend.onrender.com${user.avatar}`} />
-      ) : (
-        <img src={s.image} />
-      )}
-      <div className="story-name">{s.name}</div>
-    </div>
-  ))}
-</div>
-
+      <div className="stories">
+        {stories.map((s, i) => (
+          <div
+            key={i}
+            className="story"
+            onClick={() => {
+              setStoryIndex(i);
+              setShowStory(true);
+            }}
+          >
+            <img
+              src={
+                i === 0
+                  ? avatarUrl(user.name, user.avatar)
+                  : s.image || avatarUrl(s.name, null)
+              }
+              alt={s.name}
+            />
+            <div className="story-name">{s.name}</div>
+          </div>
+        ))}
+      </div>
 
       {/* CREATE POST */}
       <div className="create-post">
-        <img src={`https://pyrexxbook-backend.onrender.com${user.avatar}`} />
+        <img src={avatarUrl(user.name, user.avatar)} alt={user.name} />
         <textarea
           placeholder={`What's on your mind, ${user.name}?`}
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
         />
         <button onClick={createPost}>Post</button>
       </div>
 
       {/* POSTS */}
-      {posts.map(post => (
+      {posts.map((post) => (
         <div className="post" key={post.id}>
           <div className="post-header">
-            <img src={`https://pyrexxbook-backend.onrender.com${post.avatar}`} />
+            <img src={avatarUrl(post.name, post.avatar)} alt={post.name} />
             <div>
               <div className="post-name">{post.name}</div>
-
-              {/* BIO */}
               <div style={{ fontSize: "12px", color: "gray" }}>
-                {user.bio || "No bio yet"}
+                {post.bio || "No bio yet"}
               </div>
-
               <div className="post-time">{post.time}</div>
             </div>
           </div>
@@ -145,8 +153,8 @@ function Feed() {
       {showStory && (
         <StoryModal
           stories={stories}
-          index={storyIndex}
-          onClose={() => setShowStory(false)}
+          storyIndex={storyIndex}
+          setShowStory={setShowStory}
         />
       )}
     </div>
