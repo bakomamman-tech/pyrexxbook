@@ -131,6 +131,15 @@ app.post("/api/posts", (req, res) => {
 
   res.json(post);
 });
+// Get posts for a specific user (timeline)
+app.get("/api/users/:username/posts", (req, res) => {
+  const db = readDB();
+  const username = req.params.username;
+
+  const posts = db.posts.filter(p => p.username === username);
+
+  res.json(posts);
+});
 
 /* ================= LIKES ================= */
 
