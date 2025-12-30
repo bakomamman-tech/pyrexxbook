@@ -12,13 +12,9 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const DB_FILE = path.join(__dirname, "db.json");
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 
-// Ensure folders exist
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
-if (!fs.existsSync(path.join(UPLOAD_DIR, "default.png"))) {
-  // Put ANY default avatar file here manually
-  console.log("⚠️ Place default.png inside server/uploads/");
-}
+/* ================= FILE SYSTEM ================= */
 
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 if (!fs.existsSync(DB_FILE)) {
   fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], posts: [] }, null, 2));
 }
@@ -31,6 +27,20 @@ function writeDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
+/* ================= USERS ================= */
+
+// Get user by username (for profile pages)
+app.get("/api/users/:username", (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.username === req.params.username);
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.json(user);
+});
+
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", (req, res) => {
@@ -38,47 +48,45 @@ app.post("/api/auth/register", (req, res) => {
   const db = readDB();
 
   if (db.users.find(u => u.email === email)) {
-    return res.json({ msg: "User already exists" });
+    return res.status(400).json({ message: "User already exists" });
   }
+
+  const username = name.toLowerCase().replace(/\s+/g, "");
 
   const user = {
     id: Date.now(),
     name,
+    username,
     email,
     password,
     avatar: "/uploads/default.png",
-    bio: ""
+    cover: "/uploads/cover-default.jpg",
+    bio: "",
+    joined: new Date().toISOString().split("T")[0]
   };
 
   db.users.push(user);
   writeDB(db);
-  res.json({ msg: "Registered" });
+
+  res.json(user);
 });
 
 app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
   const db = readDB();
 
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanPassword = password.trim();
-
   const user = db.users.find(
-    u =>
-      u.email.toLowerCase() === cleanEmail &&
-      u.password === cleanPassword
+    u => u.email === email && u.password === password
   );
 
   if (!user) {
     return res.status(401).json({ message: "Invalid email or password" });
   }
 
-  // 🔥 Guarantee defaults
-  if (!user.avatar) user.avatar = "/uploads/default.png";
-  if (!user.bio) user.bio = "";
-
-  writeDB(db);
   res.json(user);
 });
+
+/* ================= BIO ================= */
 
 app.put("/api/users/bio", (req, res) => {
   const { userId, bio } = req.body;
@@ -97,23 +105,21 @@ app.put("/api/users/bio", (req, res) => {
 
 app.get("/api/posts", (req, res) => {
   const db = readDB();
-
-  // 🔥 Guarantee avatar on every post
-  db.posts.forEach(post => {
-    if (!post.avatar) post.avatar = "/uploads/default.png";
-  });
-
   res.json(db.posts || []);
 });
 
 app.post("/api/posts", (req, res) => {
-  const { name, avatar, text } = req.body;
+  const { userId, text } = req.body;
   const db = readDB();
+
+  const user = db.users.find(u => u.id == userId);
 
   const post = {
     id: Date.now(),
-    name,
-    avatar: avatar || "/uploads/default.png",
+    userId,
+    name: user.name,
+    username: user.username,
+    avatar: user.avatar,
     text,
     time: new Date().toLocaleString(),
     likes: [],
@@ -122,6 +128,7 @@ app.post("/api/posts", (req, res) => {
 
   db.posts.unshift(post);
   writeDB(db);
+
   res.json(post);
 });
 
@@ -132,7 +139,7 @@ app.post("/api/posts/:id/like", (req, res) => {
   const db = readDB();
 
   const post = db.posts.find(p => p.id == req.params.id);
-  if (!post) return res.json({ msg: "Post not found" });
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
   if (post.likes.includes(userId)) {
     post.likes = post.likes.filter(id => id !== userId);
@@ -146,39 +153,14 @@ app.post("/api/posts/:id/like", (req, res) => {
 
 /* ================= AVATAR UPLOAD ================= */
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => cb(null, Date.now() + "_" + file.originalname)
-});
-
-const upload = multer({ storage });
-
-app.post("/api/upload", upload.single("image"), (req, res) => {
-  const { userId } = req.body;
-  const db = readDB();
-
-  const user = db.users.find(u => u.id == userId);
-  if (!user) return res.json({ msg: "User not found" });
-
-  user.avatar = "/uploads/" + req.file.filename;
-  writeDB(db);
-
-  res.json({ avatar: user.avatar });
-});
-
-/* ================= START ================= */
-
-app.listen(5000, () => {
-  console.log("SERVER RUNNING ON http://localhost:5000");
-});
-
 const avatarUpload = multer({
   storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, "uploads"),
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
     filename: (req, file, cb) =>
       cb(null, Date.now() + path.extname(file.originalname))
   })
 });
+
 app.post("/api/users/:id/avatar", avatarUpload.single("avatar"), (req, res) => {
   const db = readDB();
   const user = db.users.find(u => u.id == req.params.id);
@@ -186,7 +168,6 @@ app.post("/api/users/:id/avatar", avatarUpload.single("avatar"), (req, res) => {
   if (!user) return res.status(404).json({ message: "User not found" });
 
   user.avatar = "/uploads/" + req.file.filename;
-  writeDB(db);
 
   // Update avatar in all posts
   db.posts.forEach(p => {
@@ -196,6 +177,11 @@ app.post("/api/users/:id/avatar", avatarUpload.single("avatar"), (req, res) => {
   });
 
   writeDB(db);
-
   res.json(user);
+});
+
+/* ================= START SERVER ================= */
+
+app.listen(5000, () => {
+  console.log("SERVER RUNNING ON PORT 5000");
 });
