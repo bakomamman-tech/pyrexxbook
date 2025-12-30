@@ -2,7 +2,7 @@ import ProfileCard from "./components/ProfileCard";
 import "./components/Feed.css";
 import StoryModal from "./components/StoryModal";
 import { useEffect, useState } from "react";
-import { API } from "../utils/api";
+import API_BASE from "./utils/api";
 
 function Feed() {
   const [posts, setPosts] = useState([]);
@@ -18,10 +18,7 @@ function Feed() {
   }
 
   const stories = [
-    {
-      name: "Your story",
-      image: null
-    },
+    { name: "Your story", image: null },
     {
       name: "Grace",
       image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e"
@@ -37,9 +34,9 @@ function Feed() {
   ];
 
   const loadPosts = () => {
-    fetch(`${API}/api/posts`)
-      .then((res) => res.json())
-      .then((data) => setPosts(data || []));
+    fetch(`${API_BASE}/api/posts`)
+      .then(res => res.json())
+      .then(data => setPosts(data || []));
   };
 
   useEffect(() => {
@@ -53,13 +50,12 @@ function Feed() {
   const createPost = () => {
     if (!text.trim()) return;
 
-    fetch(`${API}/api/posts`, {
+    fetch(`${API_BASE}/api/posts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: user.name,
-        avatar: user.avatar,
-        text: text
+        userId: user.id,
+        text
       })
     }).then(() => {
       setText("");
@@ -67,8 +63,8 @@ function Feed() {
     });
   };
 
-  const likePost = (id) => {
-    fetch(`${API}/api/posts/${id}/like`, {
+  const likePost = id => {
+    fetch(`${API_BASE}/api/posts/${id}/like`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id })
@@ -83,7 +79,7 @@ function Feed() {
     }
 
     if (avatar.startsWith("http")) return avatar;
-    return `${API}${avatar}`;
+    return `${API_BASE}${avatar}`;
   };
 
   return (
@@ -120,21 +116,18 @@ function Feed() {
         <textarea
           placeholder={`What's on your mind, ${user.name}?`}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={e => setText(e.target.value)}
         />
         <button onClick={createPost}>Post</button>
       </div>
 
       {/* POSTS */}
-      {posts.map((post) => (
+      {posts.map(post => (
         <div className="post" key={post.id}>
           <div className="post-header">
             <img src={avatarUrl(post.name, post.avatar)} alt={post.name} />
             <div>
               <div className="post-name">{post.name}</div>
-              <div style={{ fontSize: "12px", color: "gray" }}>
-                {post.bio || "No bio yet"}
-              </div>
               <div className="post-time">{post.time}</div>
             </div>
           </div>
