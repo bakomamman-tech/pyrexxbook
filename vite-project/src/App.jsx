@@ -1,5 +1,4 @@
 import { Outlet } from "react-router-dom";
-import Feed from "./Feed";
 import Login from "./components/Login";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
@@ -20,18 +19,20 @@ function App() {
   return (
     <>
       <Navbar />
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "250px 1fr 300px",
-        background: "#f0f2f5",
-        minHeight: "100vh"
-      }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "250px 1fr",
+          background: "#f0f2f5",
+          minHeight: "100vh",
+          maxWidth: "100vw",
+          overflowX: "hidden"
+        }}
+      >
         <Sidebar />
 
-        {/* 🔥 Router will render Feed OR Profile here */}
+        {/* Router renders Feed OR Profile here */}
         <Outlet />
-
-        <div />
       </div>
     </>
   );

@@ -1,23 +1,16 @@
 import { Link } from "react-router-dom";
+import "./Sidebar.css";
 
 function Sidebar() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   return (
-    <div style={{
-      width: "200px",
-      padding: "15px",
-      borderRight: "1px solid #ddd",
-      minHeight: "100vh"
-    }}>
+    <div className="sidebar">
       <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
-        <p>🏠 Home </p>
+        <p>🏠 Home</p>
       </Link>
 
-      <Link
-        to={`/profile/${user.username}`}
-        style={{ textDecoration: "none", color: "inherit" }}
-      >
+      <Link to={`profile/${user.username}`} style={{ textDecoration: "none", color: "inherit" }}>
         <p>👤 Profile</p>
       </Link>
 
