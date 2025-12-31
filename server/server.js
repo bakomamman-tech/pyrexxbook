@@ -29,15 +29,10 @@ function writeDB(data) {
 
 /* ================= USERS ================= */
 
-// Get user by username (for profile pages)
 app.get("/api/users/:username", (req, res) => {
   const db = readDB();
   const user = db.users.find(u => u.username === req.params.username);
-
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
-
+  if (!user) return res.status(404).json({ message: "User not found" });
   res.json(user);
 });
 
@@ -62,43 +57,74 @@ app.post("/api/auth/register", (req, res) => {
     avatar: "/uploads/default.png",
     cover: "/uploads/cover-default.jpg",
     bio: "",
-    joined: new Date().toISOString().split("T")[0]
+    joined: new Date().toISOString().split("T")[0],
+    friends: [],
+    requests: []
   };
 
   db.users.push(user);
   writeDB(db);
-
   res.json(user);
 });
 
 app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
   const db = readDB();
-
-  const user = db.users.find(
-    u => u.email === email && u.password === password
-  );
-
-  if (!user) {
-    return res.status(401).json({ message: "Invalid email or password" });
-  }
-
+  const user = db.users.find(u => u.email === email && u.password === password);
+  if (!user) return res.status(401).json({ message: "Invalid email or password" });
   res.json(user);
 });
 
-/* ================= BIO ================= */
+/* ================= FRIEND REQUESTS ================= */
 
-app.put("/api/users/bio", (req, res) => {
-  const { userId, bio } = req.body;
+// Send request
+app.post("/api/friends/request", (req, res) => {
+  const { fromUserId, toUserId } = req.body;
   const db = readDB();
 
-  const user = db.users.find(u => u.id == userId);
-  if (!user) return res.status(404).json({ message: "User not found" });
+  const from = db.users.find(u => u.id == fromUserId);
+  const to = db.users.find(u => u.id == toUserId);
 
-  user.bio = bio;
+  if (!from || !to) return res.status(404).json({ message: "User not found" });
+
+  if (to.requests.includes(fromUserId) || to.friends.includes(fromUserId)) {
+    return res.json({ message: "Already requested or friends" });
+  }
+
+  to.requests.push(fromUserId);
   writeDB(db);
+  res.json({ message: "Request sent" });
+});
 
-  res.json(user);
+// Accept request
+app.post("/api/friends/accept", (req, res) => {
+  const { fromUserId, toUserId } = req.body;
+  const db = readDB();
+
+  const from = db.users.find(u => u.id == fromUserId);
+  const to = db.users.find(u => u.id == toUserId);
+
+  if (!from || !to) return res.status(404).json({ message: "User not found" });
+
+  to.requests = to.requests.filter(id => id != fromUserId);
+  to.friends.push(fromUserId);
+  from.friends.push(toUserId);
+
+  writeDB(db);
+  res.json({ message: "Friend added" });
+});
+
+// Decline
+app.post("/api/friends/decline", (req, res) => {
+  const { fromUserId, toUserId } = req.body;
+  const db = readDB();
+
+  const to = db.users.find(u => u.id == toUserId);
+  if (!to) return res.status(404).json({ message: "User not found" });
+
+  to.requests = to.requests.filter(id => id != fromUserId);
+  writeDB(db);
+  res.json({ message: "Request removed" });
 });
 
 /* ================= POSTS ================= */
@@ -108,110 +134,7 @@ app.get("/api/posts", (req, res) => {
   res.json(db.posts || []);
 });
 
-app.post("/api/posts", (req, res) => {
-  const { userId, text } = req.body;
-  const db = readDB();
-
-  const user = db.users.find(u => u.id == userId);
-
-  const post = {
-    id: Date.now(),
-    userId,
-    name: user.name,
-    username: user.username,
-    avatar: user.avatar,
-    text,
-    time: new Date().toLocaleString(),
-    likes: [],
-    comments: []
-  };
-
-  db.posts.unshift(post);
-  writeDB(db);
-
-  res.json(post);
-});
-// Get posts for a specific user (timeline)
-app.get("/api/users/:username/posts", (req, res) => {
-  const db = readDB();
-  const username = req.params.username;
-
-  const posts = db.posts.filter(p => p.username === username);
-
-  res.json(posts);
-});
-
-/* ================= LIKES ================= */
-
-app.post("/api/posts/:id/like", (req, res) => {
-  const { userId } = req.body;
-  const db = readDB();
-
-  const post = db.posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ message: "Post not found" });
-
-  if (post.likes.includes(userId)) {
-    post.likes = post.likes.filter(id => id !== userId);
-  } else {
-    post.likes.push(userId);
-  }
-
-  writeDB(db);
-  res.json(post.likes);
-});
-
-/* ================= AVATAR UPLOAD ================= */
-
-const avatarUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-    filename: (req, file, cb) =>
-      cb(null, Date.now() + path.extname(file.originalname))
-  })
-});
-
-app.post("/api/users/:id/avatar", avatarUpload.single("avatar"), (req, res) => {
-  const db = readDB();
-  const user = db.users.find(u => u.id == req.params.id);
-
-  if (!user) return res.status(404).json({ message: "User not found" });
-
-  user.avatar = "/uploads/" + req.file.filename;
-
-  // Update avatar in all posts
-  db.posts.forEach(p => {
-    if (p.userId == user.id) {
-      p.avatar = user.avatar;
-    }
-  });
-
-  writeDB(db);
-  res.json(user);
-});
-
-/* ================= COVER PHOTO UPLOAD ================= */
-
-const coverUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-    filename: (req, file, cb) =>
-      cb(null, "cover_" + Date.now() + path.extname(file.originalname))
-  })
-});
-
-app.post("/api/users/:id/cover", coverUpload.single("cover"), (req, res) => {
-  const db = readDB();
-  const user = db.users.find(u => u.id == req.params.id);
-
-  if (!user) return res.status(404).json({ message: "User not found" });
-
-  user.cover = "/uploads/" + req.file.filename;
-  writeDB(db);
-
-  res.json(user);
-});
-
-/* ================= START SERVER ================= */
+/* ================= SERVER ================= */
 
 app.listen(5000, () => {
   console.log("SERVER RUNNING ON PORT 5000");
