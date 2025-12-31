@@ -36,6 +36,18 @@ app.get("/api/users/:username", (req, res) => {
   res.json(user);
 });
 
+// Get user by ID (for friend requests)
+app.get("/api/users/id/:id", (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.id == req.params.id);
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.json(user);
+});
+
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", (req, res) => {
