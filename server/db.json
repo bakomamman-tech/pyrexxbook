@@ -12,6 +12,19 @@
       "joined": "2025-12-30",
       "friends": [],
       "requests": []
+    },
+    {
+      "id": 1769000000001,
+      "name": "Nomzi Queen",
+      "username": "nomziqueen",
+      "email": "nomzi@pyrexx.com",
+      "password": "123456",
+      "avatar": "/uploads/default.png",
+      "cover": "/uploads/cover-default.jpg",
+      "bio": "Hi! I'm Nomzi 😊",
+      "joined": "2025-12-31",
+      "friends": [],
+      "requests": []
     }
   ],
   "posts": [
