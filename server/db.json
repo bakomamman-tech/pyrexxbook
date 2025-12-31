@@ -9,7 +9,9 @@
       "avatar": "/uploads/1766849449182.jpg",
       "cover": "/uploads/cover-default.jpg",
       "bio": "My name is Stephen Daniel Kurah. I am a school proprietor based in Kaduna State, Nigeria.",
-      "joined": "2025-12-30"
+      "joined": "2025-12-30",
+      "friends": [],
+      "requests": []
     }
   ],
   "posts": [
