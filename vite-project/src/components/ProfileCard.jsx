@@ -4,19 +4,27 @@ import API_BASE from "../utils/api";
 
 function ProfileCard() {
   const { username } = useParams();
+
   const [user, setUser] = useState(null);
   const [bio, setBio] = useState("");
   const [file, setFile] = useState(null);
   const [cover, setCover] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [posts, setPosts] = useState([]);
 
   useEffect(() => {
+    // Load profile
     fetch(`${API_BASE}/api/users/${username}`)
-      .then((res) => res.json())
-      .then((data) => {
+      .then(res => res.json())
+      .then(data => {
         setUser(data);
         setBio(data.bio || "");
       });
+
+    // Load timeline
+    fetch(`${API_BASE}/api/users/${username}/posts`)
+      .then(res => res.json())
+      .then(data => setPosts(data || []));
   }, [username]);
 
   if (!user) {
@@ -25,13 +33,14 @@ function ProfileCard() {
 
   const saveBio = () => {
     setSaving(true);
+
     fetch(`${API_BASE}/api/users/bio`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id, bio })
     })
-      .then((res) => res.json())
-      .then((updated) => {
+      .then(res => res.json())
+      .then(updated => {
         setUser(updated);
         setSaving(false);
       });
@@ -47,7 +56,7 @@ function ProfileCard() {
       method: "POST",
       body: form
     })
-      .then((res) => res.json())
+      .then(res => res.json())
       .then(setUser);
   };
 
@@ -61,7 +70,7 @@ function ProfileCard() {
       method: "POST",
       body: form
     })
-      .then((res) => res.json())
+      .then(res => res.json())
       .then(setUser);
   };
 
@@ -81,7 +90,7 @@ function ProfileCard() {
             <input
               type="file"
               hidden
-              onChange={(e) => setCover(e.target.files[0])}
+              onChange={e => setCover(e.target.files[0])}
             />
           </label>
 
@@ -99,8 +108,7 @@ function ProfileCard() {
             alt={user.name}
             style={styles.avatar}
           />
-
-          <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+          <input type="file" onChange={e => setFile(e.target.files[0])} />
           <button onClick={uploadAvatar}>Change Photo</button>
         </div>
 
@@ -111,13 +119,39 @@ function ProfileCard() {
         {/* BIO */}
         <textarea
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
+          onChange={e => setBio(e.target.value)}
           style={styles.bio}
         />
 
         <button onClick={saveBio} style={styles.saveBio}>
           {saving ? "Saving..." : "Save Bio"}
         </button>
+
+        {/* TIMELINE */}
+        <div style={styles.timeline}>
+          <h3>Posts</h3>
+
+          {posts.map(post => (
+            <div key={post.id} style={styles.post}>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <img
+                  src={`${API_BASE}${post.avatar}`}
+                  style={styles.postAvatar}
+                />
+                <strong>{post.name}</strong>
+              </div>
+
+              <p style={{ marginTop: 10 }}>{post.text}</p>
+              <small style={{ color: "gray" }}>{post.time}</small>
+            </div>
+          ))}
+
+          {posts.length === 0 && (
+            <p style={{ textAlign: "center", color: "gray" }}>
+              No posts yet
+            </p>
+          )}
+        </div>
 
       </div>
     </div>
@@ -214,5 +248,24 @@ const styles = {
     border: "none",
     borderRadius: 6,
     cursor: "pointer"
+  },
+
+  timeline: {
+    marginTop: 40,
+    padding: "0 20px"
+  },
+
+  post: {
+    background: "#f0f2f5",
+    padding: 15,
+    marginBottom: 15,
+    borderRadius: 10
+  },
+
+  postAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    marginRight: 10
   }
 };
