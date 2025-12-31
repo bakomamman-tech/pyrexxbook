@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import API_BASE from "../utils/api";
 
 function Navbar() {
@@ -7,14 +8,22 @@ function Navbar() {
   const [open, setOpen] = useState(false);
 
   const loadRequests = () => {
+    if (!user) return;
     fetch(`${API_BASE}/api/users/${user.username}`)
       .then(res => res.json())
       .then(data => setRequests(data.requests || []));
   };
 
   useEffect(() => {
-    if (user) loadRequests();
+    loadRequests();
+    const interval = setInterval(loadRequests, 10000); // refresh every 10s
+    return () => clearInterval(interval);
   }, []);
+
+  const logout = () => {
+    localStorage.removeItem("user");
+    window.location.reload();
+  };
 
   const accept = (fromUserId) => {
     fetch(`${API_BASE}/api/friends/accept`, {
@@ -41,42 +50,69 @@ function Navbar() {
       justifyContent: "space-between",
       alignItems: "center"
     }}>
-      <h2>PyrexxBook</h2>
+      <Link to="/" style={{ color: "white", textDecoration: "none" }}>
+        <h2>PyrexxBook</h2>
+      </Link>
 
-      <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+
+        {/* 🔔 Notifications */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setOpen(!open)}
+            style={{ background: "none", border: "none", color: "white", fontSize: 22, cursor: "pointer" }}
+          >
+            🔔 {requests.length > 0 && <span>({requests.length})</span>}
+          </button>
+
+          {open && (
+            <div style={{
+              position: "absolute",
+              right: 0,
+              top: 40,
+              background: "white",
+              color: "black",
+              width: 260,
+              borderRadius: 8,
+              boxShadow: "0 4px 10px rgba(0,0,0,.2)",
+              zIndex: 10
+            }}>
+              {requests.length === 0 && (
+                <p style={{ padding: 10 }}>No friend requests</p>
+              )}
+
+              {requests.map(id => (
+                <FriendRequest
+                  key={id}
+                  fromUserId={id}
+                  accept={accept}
+                  decline={decline}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Profile */}
+        <Link to={`/profile/${user.username}`} style={{ color: "white" }}>
+          {user.name}
+        </Link>
+
+        {/* Logout */}
         <button
-          onClick={() => setOpen(!open)}
-          style={{ background: "transparent", color: "white", border: "none", fontSize: 20 }}
-        >
-          🔔 {requests.length > 0 && <span>({requests.length})</span>}
-        </button>
-
-        {open && (
-          <div style={{
-            position: "absolute",
-            right: 0,
-            top: 40,
+          onClick={logout}
+          style={{
             background: "white",
-            color: "black",
-            width: 250,
-            borderRadius: 8,
-            boxShadow: "0 4px 10px rgba(0,0,0,.2)",
-            zIndex: 10
-          }}>
-            {requests.length === 0 && (
-              <p style={{ padding: 10 }}>No requests</p>
-            )}
-
-            {requests.map(id => (
-              <FriendRequest
-                key={id}
-                fromUserId={id}
-                accept={accept}
-                decline={decline}
-              />
-            ))}
-          </div>
-        )}
+            color: "#1877f2",
+            border: "none",
+            padding: "6px 12px",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          Log out
+        </button>
       </div>
     </div>
   );
@@ -95,10 +131,12 @@ function FriendRequest({ fromUserId, accept, decline }) {
 
   return (
     <div style={{ padding: 10, borderBottom: "1px solid #eee" }}>
-      <b>{user.name}</b>
-      <div>
+      <strong>{user.name}</strong>
+      <div style={{ marginTop: 5 }}>
         <button onClick={() => accept(user.id)}>Accept</button>
-        <button onClick={() => decline(user.id)}>Decline</button>
+        <button onClick={() => decline(user.id)} style={{ marginLeft: 10 }}>
+          Decline
+        </button>
       </div>
     </div>
   );
