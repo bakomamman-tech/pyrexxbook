@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const multer = require("multer");
 
 const app = express();
 app.use(cors());
@@ -18,14 +19,14 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 function readDB() {
   try {
     if (!fs.existsSync(DB_FILE)) {
-      return { users: [], posts: [] };
+      return { users: [], posts: [], stories: [] };
     }
     const raw = fs.readFileSync(DB_FILE, "utf8");
-    if (!raw) return { users: [], posts: [] };
+    if (!raw) return { users: [], posts: [], stories: [] };
     return JSON.parse(raw);
   } catch (e) {
     console.error("DB read error:", e);
-    return { users: [], posts: [] };
+    return { users: [], posts: [], stories: [] };
   }
 }
 
@@ -37,6 +38,15 @@ function writeDB(data) {
   }
 }
 
+/* ================= MULTER ================= */
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage });
+
 /* ================= USERS ================= */
 
 app.get("/api/users/:username", (req, res) => {
@@ -45,7 +55,7 @@ app.get("/api/users/:username", (req, res) => {
     const user = db.users.find(u => u.username === req.params.username);
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
-  } catch (e) {
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -56,7 +66,23 @@ app.get("/api/users/id/:id", (req, res) => {
     const user = db.users.find(u => u.id == req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
-  } catch (e) {
+  } catch {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/* ================= COVER UPLOAD ================= */
+
+app.post("/api/users/:id/cover", upload.single("cover"), (req, res) => {
+  try {
+    const db = readDB();
+    const user = db.users.find(u => u.id == req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.cover = "/uploads/" + req.file.filename;
+    writeDB(db);
+    res.json(user);
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -79,7 +105,7 @@ app.post("/api/auth/register", (req, res) => {
       name,
       username,
       email,
-      password: String(password).trim(),   // store clean password
+      password: String(password).trim(),
       avatar: "/uploads/default.png",
       cover: "/uploads/cover-default.jpg",
       bio: "",
@@ -91,8 +117,7 @@ app.post("/api/auth/register", (req, res) => {
     db.users.push(user);
     writeDB(db);
     res.json(user);
-  } catch (e) {
-    console.error("Register error:", e);
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -101,28 +126,24 @@ app.post("/api/auth/register", (req, res) => {
 
 app.post("/api/auth/login", (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const identifier = req.body.identifier || req.body.email;
+    const password = req.body.password;
+
     const db = readDB();
 
-    // Find user by email OR username
     const user = db.users.find(
       u => u.email === identifier || u.username === identifier
     );
 
     if (!user) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email/username or password" });
+      return res.status(401).json({ message: "Invalid email/username or password" });
     }
 
-    // Clean comparison (prevents hidden spaces & encoding issues)
     const cleanInput = String(password || "").trim();
     const cleanStored = String(user.password || "").trim();
 
     if (cleanStored !== cleanInput) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email/username or password" });
+      return res.status(401).json({ message: "Invalid email/username or password" });
     }
 
     res.json(user);
@@ -132,21 +153,47 @@ app.post("/api/auth/login", (req, res) => {
   }
 });
 
-/* ================= LOGOUT ================= */
-
-app.post("/api/auth/logout", (req, res) => {
-  res.json({ success: true });
-});
-
 /* ================= POSTS ================= */
 
 app.get("/api/posts", (req, res) => {
   try {
     const db = readDB();
     res.json(db.posts || []);
-  } catch (e) {
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
+});
+
+/* ================= STORIES ================= */
+
+app.post("/api/stories", (req, res) => {
+  try {
+    const { userId, image } = req.body;
+    const db = readDB();
+
+    const story = {
+      id: Date.now(),
+      userId,
+      image,
+      createdAt: Date.now()
+    };
+
+    db.stories.push(story);
+    writeDB(db);
+    res.json(story);
+  } catch {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/stories/:userId", (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.id == req.params.userId);
+  if (!user) return res.json([]);
+
+  const ids = [user.id, ...user.friends];
+  const stories = db.stories.filter(s => ids.includes(s.userId));
+  res.json(stories);
 });
 
 /* ================= SERVER ================= */
