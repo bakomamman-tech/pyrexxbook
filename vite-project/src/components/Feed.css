@@ -15,7 +15,22 @@
   width: 100%;
   border-radius: 10px;
   margin-top: 10px;
+  pointer-events: auto;
 }
+
+/* Make post images clickable */
+.post-image {
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 5;
+}
+
 @media (max-width: 768px) {
   .feed-container {
     padding: 0;
@@ -50,4 +65,112 @@
   .post {
     border-radius: 12px;
   }
+}
+.post-image {
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+  pointer-events: auto !important;
+}
+.stories {
+  display: flex;
+  gap: 15px;
+  padding: 15px 10px;
+  overflow-x: auto;
+  background: white;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.story {
+  min-width: 110px;
+  height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.story {
+  background: #000;
+}
+
+.story img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.story::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+.story-name {
+  z-index: 2;
+}
+
+
+.story-name {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  color: white;
+  font-weight: bold;
+  text-shadow: 0 2px 4px black;
+}
+.post {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.post-header img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+}
+
+.post-text {
+  margin: 10px 0;
+  font-size: 16px;
+}
+.create-post {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.create-post img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.create-post textarea {
+  flex: 1;
+  border: none;
+  resize: none;
+  padding: 10px;
+  border-radius: 20px;
+  background: #f0f2f5;
 }

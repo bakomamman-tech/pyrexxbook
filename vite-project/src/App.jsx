@@ -16,26 +16,28 @@ function App() {
     return <Login />;
   }
 
-  return (
-    <>
+    return (
+    <div className="app">
       <Navbar />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "250px 1fr",
-          background: "#f0f2f5",
-          minHeight: "100vh",
-          maxWidth: "100vw",
-          overflowX: "hidden"
-        }}
-      >
+      <div className="app-body">
         <Sidebar />
 
-        {/* Router renders Feed OR Profile here */}
-        <Outlet />
+        {/* Feed / Profile */}
+        <div className="feed-container">
+          <Outlet />
+        </div>
+
+        {/* Right Panel */}
+        <div className="rightbar">
+          <h3>Contacts</h3>
+          <p>Grace</p>
+          <p>Nomzi</p>
+          <p>David</p>
+        </div>
       </div>
-    </>
+    </div>
   );
+
 }
 
 export default App;

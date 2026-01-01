@@ -1,6 +1,7 @@
 import ProfileCard from "./components/ProfileCard";
 import "./components/Feed.css";
 import StoryModal from "./components/StoryModal";
+import ImageModal from "./components/ImageModal";
 import { useEffect, useState } from "react";
 import API_BASE from "./utils/api";
 
@@ -9,6 +10,7 @@ function Feed() {
   const [text, setText] = useState("");
   const [showStory, setShowStory] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   let user = null;
   try {
@@ -17,19 +19,33 @@ function Feed() {
     user = null;
   }
 
+  const avatarUrl = (name, avatar) => {
+    if (!avatar) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        name
+      )}&background=1877f2&color=fff`;
+    }
+    if (avatar.startsWith("http")) return avatar;
+    return `${API_BASE}${avatar}`;
+  };
+
+  /* STABLE STORIES (no Unsplash, no flicker) */
   const stories = [
-    { name: "Your story", image: null },
+    {
+      name: "Your story",
+      image: avatarUrl(user.name, user.avatar)
+    },
     {
       name: "Grace",
-      image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e"
+      image: "https://i.pravatar.cc/300?img=5"
     },
     {
       name: "John",
-      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d"
+      image: "https://i.pravatar.cc/300?img=12"
     },
     {
       name: "Aisha",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"
+      image: "https://i.pravatar.cc/300?img=32"
     }
   ];
 
@@ -71,17 +87,6 @@ function Feed() {
     }).then(loadPosts);
   };
 
-  const avatarUrl = (name, avatar) => {
-    if (!avatar) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        name
-      )}&background=1877f2&color=fff`;
-    }
-
-    if (avatar.startsWith("http")) return avatar;
-    return `${API_BASE}${avatar}`;
-  };
-
   return (
     <div className="feed-container">
       <ProfileCard />
@@ -97,14 +102,7 @@ function Feed() {
               setShowStory(true);
             }}
           >
-            <img
-              src={
-                i === 0
-                  ? avatarUrl(user.name, user.avatar)
-                  : s.image || avatarUrl(s.name, null)
-              }
-              alt={s.name}
-            />
+            <img src={s.image} alt={s.name} />
             <div className="story-name">{s.name}</div>
           </div>
         ))}
@@ -134,6 +132,15 @@ function Feed() {
 
           <div className="post-text">{post.text}</div>
 
+          {post.image && (
+            <img
+              src={`${API_BASE}${post.image}`}
+              className="post-image"
+              onClick={() => setSelectedImage(`${API_BASE}${post.image}`)}
+              alt=""
+            />
+          )}
+
           <div className="post-actions">
             <button onClick={() => likePost(post.id)}>
               👍 Like ({post.likes.length})
@@ -148,6 +155,13 @@ function Feed() {
           stories={stories}
           storyIndex={storyIndex}
           setShowStory={setShowStory}
+        />
+      )}
+
+      {selectedImage && (
+        <ImageModal
+          src={selectedImage}
+          onClose={() => setSelectedImage(null)}
         />
       )}
     </div>

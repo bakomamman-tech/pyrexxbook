@@ -8,33 +8,34 @@ function Register({ onClose, onSuccess }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const register = () => {
+  const register = async () => {
     if (!name || !email || !password) {
       return setError("All fields are required");
     }
 
-    setLoading(true);
-    setError("");
+    try {
+      setLoading(true);
+      setError("");
 
-    fetch(`${API_BASE}/api/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          setError(data.message);
-        } else {
-          localStorage.setItem("user", JSON.stringify(data));
-          onSuccess();
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Registration failed");
-        setLoading(false);
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
       });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      localStorage.setItem("user", JSON.stringify(data));
+      onSuccess();
+    } catch (err) {
+      setError(err.message || "Server not responding");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,13 +43,28 @@ function Register({ onClose, onSuccess }) {
       <div style={styles.card}>
         <h2>Create Account</h2>
 
-        {error && <p style={{ color: "red" }}>{error}</p>}
+        {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
 
-        <input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
-        <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+        <input
+          placeholder="Full name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
 
-        <button onClick={register}>
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+        />
+
+        <button onClick={register} disabled={loading}>
           {loading ? "Creating..." : "Sign Up"}
         </button>
 

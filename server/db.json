@@ -25,6 +25,19 @@
       "joined": "2025-12-31",
       "friends": [],
       "requests": []
+    },
+    {
+      "id": 1767214677267,
+      "name": "Stephen Mamson",
+      "username": "stephenmamson",
+      "email": "stephen@pyrexx.com",
+      "password": "123456",
+      "avatar": "/uploads/default.png",
+      "cover": "/uploads/cover-default.jpg",
+      "bio": "",
+      "joined": "2025-12-31",
+      "friends": [],
+      "requests": []
     }
   ],
   "posts": [
@@ -36,7 +49,9 @@
       "avatar": "/uploads/1766849449182.jpg",
       "text": "Hello Nomzi",
       "time": "12/28/2025, 3:35:47 PM",
-      "likes": [1766827598510],
+      "likes": [
+        1766827598510
+      ],
       "comments": []
     },
     {
@@ -47,7 +62,9 @@
       "avatar": "/uploads/1766849449182.jpg",
       "text": "Happy Sunday friends",
       "time": "12/28/2025, 2:48:30 PM",
-      "likes": [1766827598510],
+      "likes": [
+        1766827598510
+      ],
       "comments": []
     },
     {
@@ -58,7 +75,9 @@
       "avatar": "/uploads/1766849449182.jpg",
       "text": "I love my family",
       "time": "12/27/2025, 5:31:39 PM",
-      "likes": [1766827598510],
+      "likes": [
+        1766827598510
+      ],
       "comments": []
     }
   ]

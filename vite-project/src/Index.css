@@ -38,3 +38,55 @@ textarea, input {
 button {
   cursor: pointer;
 }
+/* ===== PYREXXBOOK LAYOUT ===== */
+
+.app {
+  min-height: 100vh;
+}
+
+/* 3-column Facebook style layout */
+.app-body {
+  display: flex;
+  margin-top: 60px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  background: white;
+  min-height: calc(100vh - 60px);
+  border-right: 1px solid #ddd;
+  padding: 20px;
+}
+
+/* Middle feed */
+.feed-container {
+  flex: 6;
+  padding: 20px;
+}
+
+/* Right panel */
+.rightbar {
+  flex: 3;
+  padding: 20px;
+}
+
+/* Mobile view */
+@media (max-width: 900px) {
+  .rightbar {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    display: none;
+  }
+
+  .feed-container {
+    padding: 10px;
+  }
+}

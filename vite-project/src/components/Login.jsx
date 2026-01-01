@@ -10,25 +10,29 @@ function Login() {
   const [loading, setLoading] = useState(false);
 
   const login = async () => {
-    setLoading(true);
-    setError("");
+    try {
+      setLoading(true);
+      setError("");
 
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.message || "Invalid login");
-      return;
+      if (!res.ok) {
+        throw new Error(data.message || "Invalid login details");
+      }
+
+      localStorage.setItem("user", JSON.stringify(data));
+      window.location.reload();
+    } catch (err) {
+      setError(err.message || "Server not responding");
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem("user", JSON.stringify(data));
-    window.location.reload();
   };
 
   const register = async () => {
@@ -36,25 +40,29 @@ function Login() {
       return setError("All fields are required");
     }
 
-    setLoading(true);
-    setError("");
+    try {
+      setLoading(true);
+      setError("");
 
-    const res = await fetch(`${API_BASE}/api/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password })
-    });
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.message || "Registration failed");
-      return;
+      if (!res.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      localStorage.setItem("user", JSON.stringify(data));
+      window.location.reload();
+    } catch (err) {
+      setError(err.message || "Server not responding");
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem("user", JSON.stringify(data));
-    window.location.reload();
   };
 
   return (
@@ -83,7 +91,7 @@ function Login() {
               style={styles.input}
             />
 
-            <button onClick={login} style={styles.primaryBtn}>
+            <button onClick={login} style={styles.primaryBtn} disabled={loading}>
               {loading ? "Logging in..." : "Log In"}
             </button>
 
@@ -125,7 +133,7 @@ function Login() {
               style={styles.input}
             />
 
-            <button onClick={register} style={styles.primaryBtn}>
+            <button onClick={register} style={styles.primaryBtn} disabled={loading}>
               {loading ? "Creating..." : "Sign Up"}
             </button>
 
