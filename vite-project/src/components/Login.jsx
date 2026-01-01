@@ -10,6 +10,8 @@ function Login() {
   const [mode, setMode] = useState("login");
   const [loading, setLoading] = useState(false);
 
+  /* ================= LOGIN ================= */
+
   const login = async () => {
     try {
       setLoading(true);
@@ -18,11 +20,19 @@ function Login() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail, password })
+
+        // Backend expects "identifier" (username OR email)
+        body: JSON.stringify({
+          identifier: loginEmail,
+          password
+        })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Invalid login");
+
+      if (!res.ok) {
+        throw new Error(data.message || "Invalid login details");
+      }
 
       localStorage.setItem("user", JSON.stringify(data));
       window.location.reload();
@@ -32,6 +42,8 @@ function Login() {
       setLoading(false);
     }
   };
+
+  /* ================= REGISTER ================= */
 
   const register = async () => {
     if (!name || !registerEmail || !password) {
@@ -45,7 +57,11 @@ function Login() {
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email: registerEmail, password })
+        body: JSON.stringify({
+          name,
+          email: registerEmail,
+          password
+        })
       });
 
       const data = await res.json();
@@ -137,15 +153,13 @@ function Login() {
         {mode === "forgot" && (
           <>
             <input
-              placeholder="Enter your email"
+              placeholder="Enter your email or username"
               value={loginEmail}
               onChange={e => setLoginEmail(e.target.value)}
               style={styles.input}
             />
 
-            <button style={styles.primaryBtn}>
-              Search
-            </button>
+            <button style={styles.primaryBtn}>Search</button>
 
             <p style={styles.link} onClick={() => setMode("login")}>
               Back to login
