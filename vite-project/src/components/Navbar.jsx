@@ -20,9 +20,14 @@ function Navbar() {
       {/* LEFT */}
       <div className="nav-left">
         <div className="brand" onClick={() => navigate("/")}>
-          <img src="/logo.png" alt="PyrexxBook" />
+          <img
+            src="/pyrexxbook.png"
+            alt="PyrexxBook Logo"
+            className="brand-logo"
+          />
           <span>PyrexxBook</span>
         </div>
+
         <input className="search" placeholder="Search PyrexxBook..." />
       </div>
 
@@ -65,14 +70,19 @@ function Navbar() {
 
         <div
           className="profile"
-          onClick={() => navigate(`/profile/${user?.username}`)}
+          onClick={() => navigate(`/profile/${user?.username || ""}`)}
         >
           <img
-            src={`https://pyrexxbook-backend.onrender.com${user?.avatar || "/uploads/default.png"}`}
+            src={
+              user?.avatar
+                ? `https://pyrexxbook-backend.onrender.com${user.avatar}`
+                : "https://pyrexxbook-backend.onrender.com/uploads/default.png"
+            }
             alt="profile"
           />
         </div>
       </div>
+
     </div>
   );
 }
