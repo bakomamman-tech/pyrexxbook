@@ -2,11 +2,12 @@ import { useState } from "react";
 import API_BASE from "../utils/api";
 
 function Login() {
-  const [email, setEmail] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const [mode, setMode] = useState("login"); // login | register | forgot
+  const [mode, setMode] = useState("login");
   const [loading, setLoading] = useState(false);
 
   const login = async () => {
@@ -17,26 +18,23 @@ function Login() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: loginEmail, password })
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Invalid login details");
-      }
+      if (!res.ok) throw new Error(data.message || "Invalid login");
 
       localStorage.setItem("user", JSON.stringify(data));
       window.location.reload();
     } catch (err) {
-      setError(err.message || "Server not responding");
+      setError(err.message || "Server error");
     } finally {
       setLoading(false);
     }
   };
 
   const register = async () => {
-    if (!name || !email || !password) {
+    if (!name || !registerEmail || !password) {
       return setError("All fields are required");
     }
 
@@ -47,19 +45,16 @@ function Login() {
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email: registerEmail, password })
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Registration failed");
-      }
+      if (!res.ok) throw new Error(data.message || "Registration failed");
 
       localStorage.setItem("user", JSON.stringify(data));
       window.location.reload();
     } catch (err) {
-      setError(err.message || "Server not responding");
+      setError(err.message || "Server error");
     } finally {
       setLoading(false);
     }
@@ -68,18 +63,16 @@ function Login() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h2 style={{ color: "#1877f2", textAlign: "center" }}>
-          PyrexxBook
-        </h2>
+        <h2 style={{ color: "#1877f2" }}>PyrexxBook</h2>
 
-        {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
+        {error && <p style={{ color: "red" }}>{error}</p>}
 
         {mode === "login" && (
           <>
             <input
-              placeholder="Email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              placeholder="Email or Username"
+              value={loginEmail}
+              onChange={e => setLoginEmail(e.target.value)}
               style={styles.input}
             />
 
@@ -109,8 +102,6 @@ function Login() {
 
         {mode === "register" && (
           <>
-            <h3>Create Account</h3>
-
             <input
               placeholder="Full name"
               value={name}
@@ -120,8 +111,8 @@ function Login() {
 
             <input
               placeholder="Email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              value={registerEmail}
+              onChange={e => setRegisterEmail(e.target.value)}
               style={styles.input}
             />
 
@@ -145,19 +136,14 @@ function Login() {
 
         {mode === "forgot" && (
           <>
-            <h3>Find your account</h3>
-
             <input
               placeholder="Enter your email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              value={loginEmail}
+              onChange={e => setLoginEmail(e.target.value)}
               style={styles.input}
             />
 
-            <button
-              onClick={() => alert("Password recovery coming soon")}
-              style={styles.primaryBtn}
-            >
+            <button style={styles.primaryBtn}>
               Search
             </button>
 
