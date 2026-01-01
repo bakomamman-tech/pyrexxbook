@@ -36,15 +36,10 @@ app.get("/api/users/:username", (req, res) => {
   res.json(user);
 });
 
-// Get user by ID (for friend requests)
 app.get("/api/users/id/:id", (req, res) => {
   const db = readDB();
   const user = db.users.find(u => u.id == req.params.id);
-
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
-
+  if (!user) return res.status(404).json({ message: "User not found" });
   res.json(user);
 });
 
@@ -87,9 +82,13 @@ app.post("/api/auth/login", (req, res) => {
   res.json(user);
 });
 
+/* ✅ FIXED LOGOUT */
+app.post("/api/auth/logout", (req, res) => {
+  res.json({ success: true });
+});
+
 /* ================= FRIEND REQUESTS ================= */
 
-// Send request
 app.post("/api/friends/request", (req, res) => {
   const { fromUserId, toUserId } = req.body;
   const db = readDB();
@@ -108,7 +107,6 @@ app.post("/api/friends/request", (req, res) => {
   res.json({ message: "Request sent" });
 });
 
-// Accept request
 app.post("/api/friends/accept", (req, res) => {
   const { fromUserId, toUserId } = req.body;
   const db = readDB();
@@ -126,7 +124,6 @@ app.post("/api/friends/accept", (req, res) => {
   res.json({ message: "Friend added" });
 });
 
-// Decline
 app.post("/api/friends/decline", (req, res) => {
   const { fromUserId, toUserId } = req.body;
   const db = readDB();
@@ -148,6 +145,7 @@ app.get("/api/posts", (req, res) => {
 
 /* ================= SERVER ================= */
 
-app.listen(5000, () => {
-  console.log("SERVER RUNNING ON PORT 5000");
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log("SERVER RUNNING ON PORT", PORT);
 });
