@@ -79,7 +79,7 @@ app.post("/api/auth/register", (req, res) => {
       name,
       username,
       email,
-      password,
+      password: String(password).trim(),   // store clean password
       avatar: "/uploads/default.png",
       cover: "/uploads/cover-default.jpg",
       bio: "",
@@ -97,19 +97,29 @@ app.post("/api/auth/register", (req, res) => {
   }
 });
 
-/* LOGIN WITH EMAIL OR USERNAME */
+/* ================= LOGIN (FIXED) ================= */
+
 app.post("/api/auth/login", (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
     const db = readDB();
 
+    // Find user by email OR username
     const user = db.users.find(
-      u =>
-        (u.email === email || u.username === email) &&
-        u.password === password
+      u => u.email === identifier || u.username === identifier
     );
 
     if (!user) {
+      return res
+        .status(401)
+        .json({ message: "Invalid email/username or password" });
+    }
+
+    // Clean comparison (prevents hidden spaces & encoding issues)
+    const cleanInput = String(password || "").trim();
+    const cleanStored = String(user.password || "").trim();
+
+    if (cleanStored !== cleanInput) {
       return res
         .status(401)
         .json({ message: "Invalid email/username or password" });
@@ -122,7 +132,8 @@ app.post("/api/auth/login", (req, res) => {
   }
 });
 
-/* LOGOUT */
+/* ================= LOGOUT ================= */
+
 app.post("/api/auth/logout", (req, res) => {
   res.json({ success: true });
 });
