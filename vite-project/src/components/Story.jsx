@@ -1,17 +1,25 @@
 import "./Story.css";
-import { API } from "../utils/api";
+import API_BASE from "../utils/api";
 import { useRef } from "react";
 
-function Story({ stories, setStories, setShowStory, setStoryIndex }) {
+function Story({ stories = [], setStories = () => {}, setShowStory, setStoryIndex }) {
   const fileRef = useRef();
-  const user = JSON.parse(localStorage.getItem("user"));
+
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user"));
+  } catch {
+    user = null;
+  }
 
   async function uploadStory(file) {
+    if (!file || !user) return;
+
     const formData = new FormData();
     formData.append("image", file);
     formData.append("userId", user.id);
 
-    const res = await fetch(`${API}/api/stories/upload`, {
+    const res = await fetch(`${API_BASE}/api/stories/upload`, {
       method: "POST",
       body: formData
     });
@@ -41,10 +49,8 @@ function Story({ stories, setStories, setShowStory, setStoryIndex }) {
           story.image && story.image !== "null"
             ? story.image.startsWith("http")
               ? story.image
-              : `${API}${story.image}`
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                story.name || "User"
-              )}&background=C3005E&color=fff`;
+              : `${API_BASE}${story.image}`
+            : `https://ui-avatars.com/api/?name=User&background=C3005E&color=fff`;
 
         return (
           <div

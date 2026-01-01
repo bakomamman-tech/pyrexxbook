@@ -1,5 +1,6 @@
 import ProfileCard from "./components/ProfileCard";
 import "./components/Feed.css";
+import Story from "./components/Story";
 import StoryModal from "./components/StoryModal";
 import ImageModal from "./components/ImageModal";
 import { useEffect, useState } from "react";
@@ -8,6 +9,7 @@ import API_BASE from "./utils/api";
 function Feed() {
   const [posts, setPosts] = useState([]);
   const [text, setText] = useState("");
+  const [stories, setStories] = useState([]);
   const [showStory, setShowStory] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -23,40 +25,29 @@ function Feed() {
     if (!avatar) {
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(
         name
-      )}&background=1877f2&color=fff`;
+      )}&background=C3005E&color=fff`;
     }
     if (avatar.startsWith("http")) return avatar;
     return `${API_BASE}${avatar}`;
   };
 
-  /* STABLE STORIES (no Unsplash, no flicker) */
-  const stories = [
-    {
-      name: "Your story",
-      image: avatarUrl(user.name, user.avatar)
-    },
-    {
-      name: "Grace",
-      image: "https://i.pravatar.cc/300?img=5"
-    },
-    {
-      name: "John",
-      image: "https://i.pravatar.cc/300?img=12"
-    },
-    {
-      name: "Aisha",
-      image: "https://i.pravatar.cc/300?img=32"
-    }
-  ];
-
+  /* Load posts */
   const loadPosts = () => {
     fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
       .then(data => setPosts(data || []));
   };
 
+  /* Load stories */
+  const loadStories = () => {
+    fetch(`${API_BASE}/api/stories/${user.id}`)
+      .then(res => res.json())
+      .then(data => setStories(data || []));
+  };
+
   useEffect(() => {
     loadPosts();
+    loadStories();
   }, []);
 
   if (!user) {
@@ -89,24 +80,16 @@ function Feed() {
 
   return (
     <div className="feed-container">
-      <ProfileCard />
 
-      {/* STORIES */}
-      <div className="stories">
-        {stories.map((s, i) => (
-          <div
-            key={i}
-            className="story"
-            onClick={() => {
-              setStoryIndex(i);
-              setShowStory(true);
-            }}
-          >
-            <img src={s.image} alt={s.name} />
-            <div className="story-name">{s.name}</div>
-          </div>
-        ))}
-      </div>
+      <ProfileCard user={user} />
+
+      {/* STORIES (with upload + carousel) */}
+      <Story
+        stories={stories}
+        setStories={setStories}
+        setShowStory={setShowStory}
+        setStoryIndex={setStoryIndex}
+      />
 
       {/* CREATE POST */}
       <div className="create-post">
@@ -143,7 +126,7 @@ function Feed() {
 
           <div className="post-actions">
             <button onClick={() => likePost(post.id)}>
-              👍 Like ({post.likes.length})
+              👍 Like ({post.likes?.length || 0})
             </button>
             <button>💬 Comment</button>
           </div>
