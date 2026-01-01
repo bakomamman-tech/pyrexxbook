@@ -14,6 +14,7 @@ body {
 .app {
   min-height: 100vh;
   background: #F8E6F1;
+  overflow-x: hidden; /* 🚨 blocks any horizontal bleed */
 }
 
 /* Full-width content area under navbar */
@@ -21,8 +22,9 @@ body {
   display: flex;
   margin-top: 95px; /* match navbar height */
   width: 100%;
-  background: #F0F2F5; /* light grey */
+  background: #F0F2F5;
   padding: 20px 40px;
+  overflow-x: hidden; /* 🚨 prevents layout overflow */
 }
 
 /* Centered Facebook-style container */
@@ -32,6 +34,7 @@ body {
   max-width: 1400px;
   margin: auto;
   gap: 20px;
+  overflow: hidden; /* 🚨 prevents children from leaking */
 }
 
 /* Sidebar (left) */
@@ -42,17 +45,22 @@ body {
   border-radius: 14px;
   padding: 20px;
   box-shadow: 0 2px 10px rgba(75, 43, 255, 0.05);
+  flex-shrink: 0;
 }
 
 /* Middle feed */
 .feed-container {
   flex: 4;
   background: transparent;
+  max-width: 100%;
+  overflow: hidden;   /* 🚨 THIS is the main fix */
+  position: relative;
 }
 
 /* Right panel */
 .rightbar {
   width: 280px;
+  flex-shrink: 0;
 }
 
 /* Right panel cards */
@@ -67,7 +75,7 @@ body {
 }
 
 .rightbar p:hover {
-  background: #EEE9FF; /* violet tint */
+  background: #EEE9FF;
   transform: translateY(-1px);
 }
 
