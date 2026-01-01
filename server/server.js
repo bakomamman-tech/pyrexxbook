@@ -74,15 +74,27 @@ app.post("/api/auth/register", (req, res) => {
   res.json(user);
 });
 
+/* ✅ LOGIN WITH EMAIL OR USERNAME */
 app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
   const db = readDB();
-  const user = db.users.find(u => u.email === email && u.password === password);
-  if (!user) return res.status(401).json({ message: "Invalid email or password" });
+
+  const user = db.users.find(
+    u =>
+      (u.email === email || u.username === email) &&
+      u.password === password
+  );
+
+  if (!user) {
+    return res
+      .status(401)
+      .json({ message: "Invalid email/username or password" });
+  }
+
   res.json(user);
 });
 
-/* ✅ FIXED LOGOUT */
+/* LOGOUT */
 app.post("/api/auth/logout", (req, res) => {
   res.json({ success: true });
 });
