@@ -7,26 +7,31 @@
 
 /* Light pink outer background */
 body {
-  background: #F8E9F0;
+  background: #F8E6F1;
 }
 
 /* Main app wrapper */
 .app {
   min-height: 100vh;
-  background: #F8E9F0;
+  background: #F8E6F1;
 }
 
-/* Main content container (light grey surface) */
+/* Full-width content area under navbar */
 .app-body {
   display: flex;
-  margin-top: 100px; /* matches 95px navbar */
+  margin-top: 95px; /* match navbar height */
+  width: 100%;
+  background: #F0F2F5; /* light grey */
+  padding: 20px 40px;
+}
+
+/* Centered Facebook-style container */
+.app-inner {
+  display: flex;
+  width: 100%;
   max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: auto;
   gap: 20px;
-  background: #F0F2F5;
-  border-radius: 20px;
-  padding: 12px;
 }
 
 /* Sidebar (left) */
@@ -36,21 +41,18 @@ body {
   min-height: calc(100vh - 120px);
   border-radius: 14px;
   padding: 20px;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(75, 43, 255, 0.05);
 }
 
 /* Middle feed */
 .feed-container {
   flex: 4;
   background: transparent;
-  padding: 0;
-  min-height: auto;
 }
 
 /* Right panel */
 .rightbar {
   width: 280px;
-  padding: 10px;
 }
 
 /* Right panel cards */
@@ -59,13 +61,14 @@ body {
   padding: 12px;
   border-radius: 14px;
   margin-bottom: 10px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+  box-shadow: 0 1px 6px rgba(0,0,0,.08);
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: 0.25s ease;
 }
 
 .rightbar p:hover {
-  background: #F3EEFF; /* soft violet tint */
+  background: #EEE9FF; /* violet tint */
+  transform: translateY(-1px);
 }
 
 /* Mobile view */
@@ -80,7 +83,7 @@ body {
     display: none;
   }
 
-  .feed-container {
-    padding: 10px;
+  .app-body {
+    padding: 15px;
   }
 }

@@ -16,28 +16,33 @@ function App() {
     return <Login />;
   }
 
-    return (
+  return (
     <div className="app">
       <Navbar />
+
       <div className="app-body">
-        <Sidebar />
+        <div className="app-inner">
 
-        {/* Feed / Profile */}
-        <div className="feed-container">
-          <Outlet />
-        </div>
+          {/* LEFT */}
+          <Sidebar />
 
-        {/* Right Panel */}
-        <div className="rightbar">
-          <h3>Contacts</h3>
-          <p>Grace</p>
-          <p>Nomzi</p>
-          <p>David</p>
+          {/* CENTER (Feed / Profile / Pages) */}
+          <div className="feed-container">
+            <Outlet />
+          </div>
+
+          {/* RIGHT */}
+          <div className="rightbar">
+            <h3>Contacts</h3>
+            <p>Grace</p>
+            <p>Nomzi</p>
+            <p>David</p>
+          </div>
+
         </div>
       </div>
     </div>
   );
-
 }
 
 export default App;
