@@ -19,7 +19,10 @@ function Navbar() {
 
       {/* LEFT */}
       <div className="nav-left">
-        <h2 className="logo" onClick={() => navigate("/")}>PyrexxBook</h2>
+        <div className="brand" onClick={() => navigate("/")}>
+          <img src="/logo.png" alt="PyrexxBook" />
+          <span>PyrexxBook</span>
+        </div>
         <input className="search" placeholder="Search PyrexxBook..." />
       </div>
 
