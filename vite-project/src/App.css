@@ -17,13 +17,14 @@ body {
 /* 3-column layout */
 .app-body {
   display: flex;
-  margin-top: 60px;
+  margin-top: 60px; /* below navbar */
   max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
+  gap: 20px;
 }
 
-/* Sidebar */
+/* Sidebar (left) */
 .sidebar {
   width: 250px;
   background: white;
@@ -33,11 +34,20 @@ body {
 }
 
 /* Middle feed */
+.feed-container {
+  flex: 4;
+  background: transparent;
+  padding: 0;
+  min-height: auto;
+}
+
+/* Right panel */
 .rightbar {
-  flex: 3;
+  width: 280px;
   padding: 20px;
 }
 
+/* Right panel cards */
 .rightbar p {
   background: white;
   padding: 10px;
@@ -45,13 +55,6 @@ body {
   margin-bottom: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,.1);
   cursor: pointer;
-}
-
-
-/* Right panel */
-.rightbar {
-  flex: 3;
-  padding: 20px;
 }
 
 /* Mobile view */
