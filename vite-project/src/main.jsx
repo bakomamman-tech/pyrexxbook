@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
 import Feed from "./Feed";
 import ProfileCard from "./components/ProfileCard";
-import "./index.css";   // 👈 ADD THIS LINE
+import "./App.css";   // ✅ Use existing stylesheet
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
