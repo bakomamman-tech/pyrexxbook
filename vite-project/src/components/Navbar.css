@@ -32,7 +32,7 @@
 .brand img {
   height: 38px;
   margin-bottom: 4px;
-  filter: drop-shadow(0 0 8px rgba(90, 61, 255, 0.7));
+  filter: drop-shadow(0 0 10px rgba(75, 43, 255, 0.8));
   animation: glow 2.5s infinite alternate;
 }
 
@@ -40,10 +40,10 @@
 .brand span {
   font-size: 17px;
   font-weight: bold;
-  color: #5A3DFF;
+  color: #4B2BFF; /* Deep Royal Violet */
   letter-spacing: 0.5px;
   line-height: 1;
-  text-shadow: 0 0 6px rgba(90, 61, 255, 0.4);
+  text-shadow: 0 0 8px rgba(75, 43, 255, 0.6);
 }
 
 /* Search */
@@ -71,12 +71,12 @@
 }
 
 .nav-icon:hover {
-  background: #F3EEFF;
+  background: #EEE9FF;
 }
 
 .nav-icon.active {
-  color: #5A3DFF;
-  border-bottom: 3px solid #5A3DFF;
+  color: #4B2BFF;
+  border-bottom: 3px solid #4B2BFF;
 }
 
 /* RIGHT */
@@ -89,59 +89,5 @@
 .nav-circle {
   background: #F0F2F5;
   width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.nav-circle:hover {
-  background: #E6DDFF;
-}
-
-.profile {
-  cursor: pointer;
-}
-
-.profile img {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-/* Glow animation */
-@keyframes glow {
-  from {
-    filter: drop-shadow(0 0 4px rgba(90, 61, 255, 0.4));
-  }
-  to {
-    filter: drop-shadow(0 0 14px rgba(0, 200, 255, 0.9));
-  }
-}
-
-/* Fade-in animation */
-@keyframes logoFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* MOBILE */
-@media (max-width: 768px) {
-  .search {
-    display: none;
-  }
-
-  .nav-center {
-    gap: 20px;
-  }
+  height: 42p
 }
