@@ -11,7 +11,8 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= MONGODB ================= */
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("MongoDB error:", err));
 
@@ -70,40 +71,69 @@ const upload = multer({ storage });
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", async (req, res) => {
-  const { name, email, password } = req.body;
+  try {
+    const { name, email, password } = req.body;
 
-  const exists = await User.findOne({ email });
-  if (exists) return res.status(400).json({ message: "User already exists" });
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "User already exists" });
 
-  const username = name.toLowerCase().replace(/\s+/g, "");
+    const username = name.toLowerCase().replace(/\s+/g, "");
 
-  const user = await User.create({
-    name,
-    username,
-    email,
-    password,
-    avatar: "/uploads/default.png",
-    cover: "/uploads/cover-default.jpg",
-    bio: "",
-    joined: new Date().toISOString().split("T")[0],
-    followers: [],
-    following: []
-  });
+    const user = await User.create({
+      name,
+      username,
+      email,
+      password,
+      avatar: "/uploads/default.png",
+      cover: "/uploads/cover-default.jpg",
+      bio: "",
+      joined: new Date().toISOString().split("T")[0],
+      followers: [],
+      following: []
+    });
 
-  res.json(user);
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 app.post("/api/auth/login", async (req, res) => {
-  const { identifier, password } = req.body;
+  try {
+    const { identifier, password } = req.body;
 
-  const user = await User.findOne({
-    $or: [{ email: identifier }, { username: identifier }]
-  });
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { username: identifier }]
+    });
 
-  if (!user || user.password !== password)
-    return res.status(401).json({ message: "Invalid login" });
+    if (!user || user.password !== password)
+      return res.status(401).json({ message: "Invalid login" });
 
-  res.json(user);
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+/* ================= USERS ================= */
+
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.get("/api/users/:username", async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 /* ================= POSTS ================= */
@@ -117,7 +147,6 @@ app.post("/api/posts", async (req, res) => {
   try {
     const { username, email, text } = req.body;
 
-    // Find the user by email or username instead of broken ID
     const user = await User.findOne({
       $or: [{ email }, { username }]
     });
@@ -137,7 +166,6 @@ app.post("/api/posts", async (req, res) => {
 
     res.json(post);
   } catch (e) {
-    console.error("POST ERROR:", e);
     res.status(500).json({ message: "Post failed" });
   }
 });
