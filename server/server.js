@@ -119,9 +119,7 @@ app.post("/api/auth/login", (req, res) => {
       u => u.email === identifier || u.username === identifier
     );
 
-    if (!user) {
-      return res.status(401).json({ message: "Invalid login" });
-    }
+    if (!user) return res.status(401).json({ message: "Invalid login" });
 
     if (String(user.password).trim() !== String(password).trim()) {
       return res.status(401).json({ message: "Invalid login" });
@@ -138,6 +136,49 @@ app.post("/api/auth/login", (req, res) => {
 app.get("/api/posts", (req, res) => {
   const db = readDB();
   res.json(db.posts || []);
+});
+
+/* ================= LIKES ================= */
+
+app.post("/api/posts/:id/like", (req, res) => {
+  const { userId } = req.body;
+  const db = readDB();
+
+  const post = db.posts.find(p => p.id == req.params.id);
+  if (!post) return res.status(404).json({ message: "Post not found" });
+
+  if (!post.likes) post.likes = [];
+
+  if (post.likes.includes(Number(userId))) {
+    post.likes = post.likes.filter(id => id !== Number(userId));
+  } else {
+    post.likes.push(Number(userId));
+  }
+
+  writeDB(db);
+  res.json(post);
+});
+
+/* ================= COMMENTS ================= */
+
+app.post("/api/posts/:id/comment", (req, res) => {
+  const { userId, text } = req.body;
+  const db = readDB();
+
+  const post = db.posts.find(p => p.id == req.params.id);
+  if (!post) return res.status(404).json({ message: "Post not found" });
+
+  if (!post.comments) post.comments = [];
+
+  post.comments.push({
+    id: Date.now(),
+    userId: Number(userId),
+    text,
+    time: new Date().toLocaleString()
+  });
+
+  writeDB(db);
+  res.json(post);
 });
 
 /* ================= STORY UPLOAD ================= */
@@ -158,13 +199,12 @@ app.post("/api/stories/upload", upload.single("image"), (req, res) => {
   res.json(story);
 });
 
-/* ================= STORY FETCH (24H EXPIRY) ================= */
+/* ================= STORY FETCH (24H) ================= */
 
 app.get("/api/stories/:userId", (req, res) => {
   const db = readDB();
   const now = Date.now();
 
-  // Auto-delete expired stories
   db.stories = db.stories.filter(s => now - s.createdAt < 86400000);
   writeDB(db);
 
