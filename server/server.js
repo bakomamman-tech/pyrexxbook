@@ -127,6 +127,24 @@ app.post("/api/auth/login", async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 });
+// TEMP PASSWORD RESET (ADMIN)
+app.get("/api/auth/reset/:id/:newpass", async (req, res) => {
+  try {
+    const { id, newpass } = req.params;
+
+    const hashed = await bcrypt.hash(newpass, 10);
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      { password: hashed },
+      { new: true }
+    );
+
+    res.json({ message: "Password reset", user });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 /* ================= USERS ================= */
 
