@@ -1,257 +1,189 @@
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
+const mongoose = require("mongoose");
 const multer = require("multer");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const DB_FILE = path.join(__dirname, "db.json");
-const UPLOAD_DIR = path.join(__dirname, "uploads");
+/* ================= MONGODB ================= */
 
-/* ================= FILE SYSTEM ================= */
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.error("MongoDB connection error:", err));
 
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+/* ================= MODELS ================= */
 
-function readDB() {
-  try {
-    if (!fs.existsSync(DB_FILE)) {
-      return { users: [], posts: [], stories: [] };
+const UserSchema = new mongoose.Schema({
+  name: String,
+  username: String,
+  email: String,
+  password: String,
+  avatar: String,
+  cover: String,
+  bio: String,
+  joined: String,
+  followers: [String],
+  following: [String]
+});
+
+const PostSchema = new mongoose.Schema({
+  userId: String,
+  name: String,
+  username: String,
+  avatar: String,
+  text: String,
+  image: String,
+  time: String,
+  likes: [String],
+  comments: [
+    {
+      userId: String,
+      text: String,
+      time: String
     }
-    const raw = fs.readFileSync(DB_FILE, "utf8");
-    if (!raw) return { users: [], posts: [], stories: [] };
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error("DB read error:", e);
-    return { users: [], posts: [], stories: [] };
-  }
-}
+  ]
+});
 
-function writeDB(data) {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-  } catch (e) {
-    console.error("DB write error:", e);
-  }
-}
+const StorySchema = new mongoose.Schema({
+  userId: String,
+  image: String,
+  createdAt: Number
+});
+
+const User = mongoose.model("User", UserSchema);
+const Post = mongoose.model("Post", PostSchema);
+const Story = mongoose.model("Story", StorySchema);
 
 /* ================= MULTER ================= */
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  destination: "uploads",
   filename: (req, file, cb) =>
     cb(null, Date.now() + path.extname(file.originalname))
 });
-
 const upload = multer({ storage });
-
-/* ================= USERS ================= */
-
-app.get("/api/users/:username", (req, res) => {
-  const db = readDB();
-  const user = db.users.find(u => u.username === req.params.username);
-  if (!user) return res.status(404).json({ message: "User not found" });
-  res.json(user);
-});
-
-app.get("/api/users/id/:id", (req, res) => {
-  const db = readDB();
-  const user = db.users.find(u => u.id == req.params.id);
-  if (!user) return res.status(404).json({ message: "User not found" });
-  res.json(user);
-});
-
-/* ================= COVER UPLOAD ================= */
-
-app.post("/api/users/:id/cover", upload.single("cover"), (req, res) => {
-  const db = readDB();
-  const user = db.users.find(u => u.id == req.params.id);
-  if (!user) return res.status(404).json({ message: "User not found" });
-
-  user.cover = "/uploads/" + req.file.filename;
-  writeDB(db);
-  res.json(user);
-});
 
 /* ================= AUTH ================= */
 
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   const { name, email, password } = req.body;
-  const db = readDB();
 
-  if (db.users.find(u => u.email === email)) {
-    return res.status(400).json({ message: "User already exists" });
-  }
+  const exists = await User.findOne({ email });
+  if (exists) return res.status(400).json({ message: "User already exists" });
 
   const username = name.toLowerCase().replace(/\s+/g, "");
 
-  const user = {
-    id: Date.now(),
+  const user = await User.create({
     name,
     username,
     email,
-    password: String(password).trim(),
+    password,
     avatar: "/uploads/default.png",
     cover: "/uploads/cover-default.jpg",
     bio: "",
     joined: new Date().toISOString().split("T")[0],
     followers: [],
     following: []
-  };
+  });
 
-  db.users.push(user);
-  writeDB(db);
   res.json(user);
 });
 
-/* ================= LOGIN ================= */
+app.post("/api/auth/login", async (req, res) => {
+  const { identifier, password } = req.body;
 
-app.post("/api/auth/login", (req, res) => {
-  try {
-    const identifier = req.body.identifier || req.body.email;
-    const password = req.body.password;
-    const db = readDB();
+  const user = await User.findOne({
+    $or: [{ email: identifier }, { username: identifier }]
+  });
 
-    const user = db.users.find(
-      u => u.email === identifier || u.username === identifier
-    );
+  if (!user || user.password !== password)
+    return res.status(401).json({ message: "Invalid login" });
 
-    if (!user) return res.status(401).json({ message: "Invalid login" });
-
-    if (String(user.password).trim() !== String(password).trim()) {
-      return res.status(401).json({ message: "Invalid login" });
-    }
-
-    res.json(user);
-  } catch {
-    res.status(500).json({ message: "Server error" });
-  }
+  res.json(user);
 });
 
 /* ================= POSTS ================= */
 
-app.get("/api/posts", (req, res) => {
-  const db = readDB();
-  res.json(db.posts || []);
+app.get("/api/posts", async (req, res) => {
+  const posts = await Post.find().sort({ _id: -1 });
+  res.json(posts);
 });
 
-/* ================= LIKES ================= */
+app.post("/api/posts", async (req, res) => {
+  const { userId, text } = req.body;
+  const user = await User.findById(userId);
 
-app.post("/api/posts/:id/like", (req, res) => {
-  const { userId } = req.body;
-  const db = readDB();
+  const post = await Post.create({
+    userId,
+    name: user.name,
+    username: user.username,
+    avatar: user.avatar,
+    text,
+    time: new Date().toLocaleString(),
+    likes: [],
+    comments: []
+  });
 
-  const post = db.posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ message: "Post not found" });
-
-  if (!post.likes) post.likes = [];
-
-  if (post.likes.includes(Number(userId))) {
-    post.likes = post.likes.filter(id => id !== Number(userId));
-  } else {
-    post.likes.push(Number(userId));
-  }
-
-  writeDB(db);
   res.json(post);
 });
 
-/* ================= COMMENTS ================= */
+/* ================= LIKE ================= */
 
-app.post("/api/posts/:id/comment", (req, res) => {
+app.post("/api/posts/:id/like", async (req, res) => {
+  const { userId } = req.body;
+  const post = await Post.findById(req.params.id);
+
+  if (post.likes.includes(userId)) {
+    post.likes = post.likes.filter(id => id !== userId);
+  } else {
+    post.likes.push(userId);
+  }
+
+  await post.save();
+  res.json(post);
+});
+
+/* ================= COMMENT ================= */
+
+app.post("/api/posts/:id/comment", async (req, res) => {
   const { userId, text } = req.body;
-  const db = readDB();
-
-  const post = db.posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ message: "Post not found" });
-
-  if (!post.comments) post.comments = [];
+  const post = await Post.findById(req.params.id);
 
   post.comments.push({
-    id: Date.now(),
-    userId: Number(userId),
+    userId,
     text,
     time: new Date().toLocaleString()
   });
 
-  writeDB(db);
+  await post.save();
   res.json(post);
 });
 
-/* ================= STORY UPLOAD ================= */
+/* ================= STORIES ================= */
 
-app.post("/api/stories/upload", upload.single("image"), (req, res) => {
-  const { userId } = req.body;
-  const db = readDB();
-
-  const story = {
-    id: Date.now(),
-    userId: Number(userId),
+app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
+  const story = await Story.create({
+    userId: req.body.userId,
     image: "/uploads/" + req.file.filename,
     createdAt: Date.now()
-  };
-
-  db.stories.push(story);
-  writeDB(db);
+  });
   res.json(story);
 });
 
-/* ================= STORY FETCH (24H) ================= */
-
-app.get("/api/stories/:userId", (req, res) => {
-  const db = readDB();
-  const now = Date.now();
-
-  db.stories = db.stories.filter(s => now - s.createdAt < 86400000);
-  writeDB(db);
-
-  const user = db.users.find(u => u.id == req.params.userId);
-  if (!user) return res.json([]);
-
-  const ids = [user.id, ...user.following];
-  res.json(db.stories.filter(s => ids.includes(s.userId)));
-});
-
-/* ================= FOLLOW SYSTEM ================= */
-
-app.post("/api/users/:id/follow", (req, res) => {
-  const { targetId } = req.body;
-  const db = readDB();
-
-  const user = db.users.find(u => u.id == req.params.id);
-  const target = db.users.find(u => u.id == targetId);
-
-  if (!user || !target) return res.sendStatus(404);
-
-  if (!user.following.includes(targetId)) {
-    user.following.push(targetId);
-    target.followers.push(user.id);
-  }
-
-  writeDB(db);
-  res.json({ success: true });
-});
-
-app.post("/api/users/:id/unfollow", (req, res) => {
-  const { targetId } = req.body;
-  const db = readDB();
-
-  const user = db.users.find(u => u.id == req.params.id);
-  const target = db.users.find(u => u.id == targetId);
-
-  user.following = user.following.filter(i => i != targetId);
-  target.followers = target.followers.filter(i => i != user.id);
-
-  writeDB(db);
-  res.json({ success: true });
+app.get("/api/stories/:userId", async (req, res) => {
+  const user = await User.findById(req.params.userId);
+  const ids = [user._id.toString(), ...user.following];
+  const stories = await Story.find({ userId: { $in: ids } });
+  res.json(stories);
 });
 
 /* ================= SERVER ================= */
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log("SERVER RUNNING ON PORT", PORT);
+  console.log("Server running on", PORT);
 });
