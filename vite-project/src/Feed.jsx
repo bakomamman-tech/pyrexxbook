@@ -38,7 +38,7 @@ function Feed() {
   };
 
   const loadStories = () => {
-    fetch(`${API_BASE}/api/stories/${user.id}`)
+    fetch(`${API_BASE}/api/stories/${user._id}`)
       .then(res => res.json())
       .then(data => setStories(data || []));
   };
@@ -57,7 +57,7 @@ function Feed() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId: user.id,
+        email: user.email,
         text
       })
     }).then(() => {
@@ -70,7 +70,7 @@ function Feed() {
     fetch(`${API_BASE}/api/posts/${id}/like`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id })
+      body: JSON.stringify({ userId: user._id })
     }).then(loadPosts);
   };
 
@@ -81,7 +81,7 @@ function Feed() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId: user.id,
+        userId: user._id,
         text
       })
     }).then(loadPosts);
@@ -110,7 +110,7 @@ function Feed() {
       </div>
 
       {posts.map(post => (
-        <div className="post" key={post.id}>
+        <div className="post" key={post._id}>
           <div className="post-header">
             <img src={avatarUrl(post.name, post.avatar)} alt={post.name} />
             <div>
@@ -131,7 +131,7 @@ function Feed() {
           )}
 
           <div className="post-actions">
-            <button onClick={() => likePost(post.id)}>
+            <button onClick={() => likePost(post._id)}>
               👍 Like ({post.likes?.length || 0})
             </button>
           </div>
@@ -140,7 +140,7 @@ function Feed() {
           <div className="comments">
             {(post.comments || []).map((c, i) => (
               <div key={i} className="comment">
-                <b>{c.userId === user.id ? "You" : "User"}:</b> {c.text}
+                <b>{c.userId === user._id ? "You" : "User"}:</b> {c.text}
               </div>
             ))}
 
@@ -149,7 +149,7 @@ function Feed() {
               placeholder="Write a comment..."
               onKeyDown={e => {
                 if (e.key === "Enter") {
-                  addComment(post.id, e.target.value);
+                  addComment(post._id, e.target.value);
                   e.target.value = "";
                 }
               }}
