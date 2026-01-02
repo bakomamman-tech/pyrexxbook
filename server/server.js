@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
+const bcrypt = require("bcrypt");
 
 const app = express();
 app.use(cors());
@@ -84,11 +85,14 @@ app.post("/api/auth/register", async (req, res) => {
 
     const username = name.toLowerCase().replace(/\s+/g, "");
 
+    // HASH PASSWORD
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await User.create({
       name,
       username,
       email,
-      password,
+      password: hashedPassword,
       avatar: "/uploads/default.png",
       cover: "/uploads/cover-default.jpg",
       bio: "",
@@ -103,7 +107,7 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// LOGIN  (FIXED)
+// LOGIN
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -113,8 +117,10 @@ app.post("/api/auth/login", async (req, res) => {
     });
 
     if (!user) return res.status(401).json({ message: "Invalid login" });
-    if (user.password !== password)
-      return res.status(401).json({ message: "Invalid login" });
+
+    // COMPARE PASSWORD
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ message: "Invalid login" });
 
     res.json({ user });
   } catch (e) {
