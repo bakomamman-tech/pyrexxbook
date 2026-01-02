@@ -1,2 +1,2 @@
-const API_BASE = "https://pyrexxbook-kurah-backend.onrender.com";
+const API_BASE = "https://pyrexxbook-kurahz-backend.onrender.com";
 export default API_BASE;

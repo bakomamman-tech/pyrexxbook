@@ -70,12 +70,17 @@ const upload = multer({ storage });
 
 /* ================= AUTH ================= */
 
+// REGISTER
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "All fields required" });
+
     const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ message: "User already exists" });
+    if (exists)
+      return res.status(400).json({ message: "User already exists" });
 
     const username = name.toLowerCase().replace(/\s+/g, "");
 
@@ -92,24 +97,26 @@ app.post("/api/auth/register", async (req, res) => {
       following: []
     });
 
-    res.json(user);
+    res.json({ user });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
 
+// LOGIN  (FIXED)
 app.post("/api/auth/login", async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { email, password } = req.body;
 
     const user = await User.findOne({
-      $or: [{ email: identifier }, { username: identifier }]
+      $or: [{ email }, { username: email }]
     });
 
-    if (!user || user.password !== password)
+    if (!user) return res.status(401).json({ message: "Invalid login" });
+    if (user.password !== password)
       return res.status(401).json({ message: "Invalid login" });
 
-    res.json(user);
+    res.json({ user });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -118,22 +125,14 @@ app.post("/api/auth/login", async (req, res) => {
 /* ================= USERS ================= */
 
 app.get("/api/users", async (req, res) => {
-  try {
-    const users = await User.find();
-    res.json(users);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
+  const users = await User.find();
+  res.json(users);
 });
 
 app.get("/api/users/:username", async (req, res) => {
-  try {
-    const user = await User.findOne({ username: req.params.username });
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
+  const user = await User.findOne({ username: req.params.username });
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json(user);
 });
 
 /* ================= POSTS ================= */
@@ -145,7 +144,7 @@ app.get("/api/posts", async (req, res) => {
 
 app.post("/api/posts", async (req, res) => {
   try {
-    const { username, email, text } = req.body;
+    const { email, username, text } = req.body;
 
     const user = await User.findOne({
       $or: [{ email }, { username }]
@@ -165,7 +164,7 @@ app.post("/api/posts", async (req, res) => {
     });
 
     res.json(post);
-  } catch (e) {
+  } catch {
     res.status(500).json({ message: "Post failed" });
   }
 });
@@ -175,7 +174,6 @@ app.post("/api/posts", async (req, res) => {
 app.post("/api/posts/:id/like", async (req, res) => {
   const { userId } = req.body;
   const post = await Post.findById(req.params.id);
-
   if (!post) return res.sendStatus(404);
 
   if (post.likes.includes(userId)) {
@@ -193,7 +191,6 @@ app.post("/api/posts/:id/like", async (req, res) => {
 app.post("/api/posts/:id/comment", async (req, res) => {
   const { userId, text } = req.body;
   const post = await Post.findById(req.params.id);
-
   if (!post) return res.sendStatus(404);
 
   post.comments.push({
