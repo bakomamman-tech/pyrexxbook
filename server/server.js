@@ -13,7 +13,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
-  .catch(err => console.error("MongoDB connection error:", err));
+  .catch(err => console.error("MongoDB error:", err));
 
 /* ================= MODELS ================= */
 
@@ -114,21 +114,28 @@ app.get("/api/posts", async (req, res) => {
 });
 
 app.post("/api/posts", async (req, res) => {
-  const { userId, text } = req.body;
-  const user = await User.findById(userId);
+  try {
+    const { userId, text } = req.body;
 
-  const post = await Post.create({
-    userId,
-    name: user.name,
-    username: user.username,
-    avatar: user.avatar,
-    text,
-    time: new Date().toLocaleString(),
-    likes: [],
-    comments: []
-  });
+    const user = await User.findOne({ _id: userId });
+    if (!user) return res.status(400).json({ message: "User not found" });
 
-  res.json(post);
+    const post = await Post.create({
+      userId: user._id.toString(),
+      name: user.name,
+      username: user.username,
+      avatar: user.avatar,
+      text,
+      time: new Date().toLocaleString(),
+      likes: [],
+      comments: []
+    });
+
+    res.json(post);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Post failed" });
+  }
 });
 
 /* ================= LIKE ================= */
@@ -136,6 +143,8 @@ app.post("/api/posts", async (req, res) => {
 app.post("/api/posts/:id/like", async (req, res) => {
   const { userId } = req.body;
   const post = await Post.findById(req.params.id);
+
+  if (!post) return res.sendStatus(404);
 
   if (post.likes.includes(userId)) {
     post.likes = post.likes.filter(id => id !== userId);
@@ -152,6 +161,8 @@ app.post("/api/posts/:id/like", async (req, res) => {
 app.post("/api/posts/:id/comment", async (req, res) => {
   const { userId, text } = req.body;
   const post = await Post.findById(req.params.id);
+
+  if (!post) return res.sendStatus(404);
 
   post.comments.push({
     userId,
@@ -176,6 +187,8 @@ app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
 
 app.get("/api/stories/:userId", async (req, res) => {
   const user = await User.findById(req.params.userId);
+  if (!user) return res.json([]);
+
   const ids = [user._id.toString(), ...user.following];
   const stories = await Story.find({ userId: { $in: ids } });
   res.json(stories);
@@ -184,6 +197,4 @@ app.get("/api/stories/:userId", async (req, res) => {
 /* ================= SERVER ================= */
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log("Server running on", PORT);
-});
+app.listen(PORT, () => console.log("Server running on", PORT));
