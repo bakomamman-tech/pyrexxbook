@@ -14,6 +14,12 @@ function Navbar() {
 
   const isActive = (path) => location.pathname === path;
 
+  const logout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
+    window.location.reload();
+  };
+
   return (
     <div className="navbar">
 
@@ -75,12 +81,29 @@ function Navbar() {
           <img
             src={
               user?.avatar
-                ? `https://pyrexxbook-backend.onrender.com${user.avatar}`
-                : "https://pyrexxbook-backend.onrender.com/uploads/default.png"
+                ? `https://pyrexxbook-kurah-backend.onrender.com${user.avatar}`
+                : "https://pyrexxbook-kurah-backend.onrender.com/uploads/default.png"
             }
             alt="profile"
           />
         </div>
+
+        {/* LOGOUT BUTTON */}
+        <button
+          onClick={logout}
+          style={{
+            marginLeft: "10px",
+            padding: "6px 10px",
+            borderRadius: "6px",
+            border: "none",
+            cursor: "pointer",
+            background: "#ff3b3b",
+            color: "white",
+            fontWeight: "bold"
+          }}
+        >
+          Logout
+        </button>
       </div>
 
     </div>
