@@ -31,14 +31,12 @@ function Feed() {
     return `${API_BASE}${avatar}`;
   };
 
-  /* Load posts */
   const loadPosts = () => {
     fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
       .then(data => setPosts(data || []));
   };
 
-  /* Load stories */
   const loadStories = () => {
     fetch(`${API_BASE}/api/stories/${user.id}`)
       .then(res => res.json())
@@ -50,9 +48,7 @@ function Feed() {
     loadStories();
   }, []);
 
-  if (!user) {
-    return <div style={{ padding: "20px" }}>Please log in</div>;
-  }
+  if (!user) return <div style={{ padding: "20px" }}>Please log in</div>;
 
   const createPost = () => {
     if (!text.trim()) return;
@@ -78,12 +74,24 @@ function Feed() {
     }).then(loadPosts);
   };
 
+  const addComment = (id, text) => {
+    if (!text.trim()) return;
+
+    fetch(`${API_BASE}/api/posts/${id}/comment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id,
+        text
+      })
+    }).then(loadPosts);
+  };
+
   return (
     <div className="feed-container">
 
       <ProfileCard user={user} />
 
-      {/* STORIES (with upload + carousel) */}
       <Story
         stories={stories}
         setStories={setStories}
@@ -91,7 +99,6 @@ function Feed() {
         setStoryIndex={setStoryIndex}
       />
 
-      {/* CREATE POST */}
       <div className="create-post">
         <img src={avatarUrl(user.name, user.avatar)} alt={user.name} />
         <textarea
@@ -102,7 +109,6 @@ function Feed() {
         <button onClick={createPost}>Post</button>
       </div>
 
-      {/* POSTS */}
       {posts.map(post => (
         <div className="post" key={post.id}>
           <div className="post-header">
@@ -128,7 +134,26 @@ function Feed() {
             <button onClick={() => likePost(post.id)}>
               👍 Like ({post.likes?.length || 0})
             </button>
-            <button>💬 Comment</button>
+          </div>
+
+          {/* COMMENTS */}
+          <div className="comments">
+            {(post.comments || []).map((c, i) => (
+              <div key={i} className="comment">
+                <b>{c.userId === user.id ? "You" : "User"}:</b> {c.text}
+              </div>
+            ))}
+
+            <input
+              className="comment-input"
+              placeholder="Write a comment..."
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  addComment(post.id, e.target.value);
+                  e.target.value = "";
+                }
+              }}
+            />
           </div>
         </div>
       ))}
