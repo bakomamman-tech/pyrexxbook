@@ -115,9 +115,13 @@ app.get("/api/posts", async (req, res) => {
 
 app.post("/api/posts", async (req, res) => {
   try {
-    const { userId, text } = req.body;
+    const { username, email, text } = req.body;
 
-    const user = await User.findOne({ _id: userId });
+    // Find the user by email or username instead of broken ID
+    const user = await User.findOne({
+      $or: [{ email }, { username }]
+    });
+
     if (!user) return res.status(400).json({ message: "User not found" });
 
     const post = await Post.create({
@@ -133,7 +137,7 @@ app.post("/api/posts", async (req, res) => {
 
     res.json(post);
   } catch (e) {
-    console.error(e);
+    console.error("POST ERROR:", e);
     res.status(500).json({ message: "Post failed" });
   }
 });
