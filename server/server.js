@@ -74,18 +74,18 @@ const upload = multer({ storage });
 // REGISTER
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    let { name, email, password } = req.body;
 
     if (!name || !email || !password)
       return res.status(400).json({ message: "All fields required" });
+
+    email = email.toLowerCase().trim();
+    const username = name.toLowerCase().replace(/\s+/g, "");
 
     const exists = await User.findOne({ email });
     if (exists)
       return res.status(400).json({ message: "User already exists" });
 
-    const username = name.toLowerCase().replace(/\s+/g, "");
-
-    // HASH PASSWORD
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
@@ -107,39 +107,54 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// LOGIN
+// LOGIN (HARDENED)
 app.post("/api/auth/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(400).json({ message: "Missing credentials" });
+
+    email = email.toLowerCase().trim();
 
     const user = await User.findOne({
       $or: [{ email }, { username: email }]
     });
 
-    if (!user) return res.status(401).json({ message: "Invalid login" });
+    if (!user)
+      return res.status(401).json({ message: "Invalid email or password" });
 
-    // COMPARE PASSWORD
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid login" });
+    let match = false;
+
+    // bcrypt password
+    if (user.password.startsWith("$2b$") || user.password.startsWith("$2a$")) {
+      match = await bcrypt.compare(password, user.password);
+    } else {
+      // legacy plain text password
+      if (password === user.password) {
+        const newHash = await bcrypt.hash(password, 10);
+        user.password = newHash;
+        await user.save();
+        match = true;
+      }
+    }
+
+    if (!match)
+      return res.status(401).json({ message: "Invalid email or password" });
 
     res.json({ user });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    console.error(e);
+    res.status(500).json({ message: "Login failed" });
   }
 });
-// TEMP PASSWORD RESET (ADMIN)
+
+// ADMIN PASSWORD RESET
 app.get("/api/auth/reset/:id/:newpass", async (req, res) => {
   try {
     const { id, newpass } = req.params;
-
     const hashed = await bcrypt.hash(newpass, 10);
-
-    const user = await User.findByIdAndUpdate(
-      id,
-      { password: hashed },
-      { new: true }
-    );
-
+    const user = await User.findByIdAndUpdate(id, { password: hashed }, { new: true });
     res.json({ message: "Password reset", user });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -217,12 +232,7 @@ app.post("/api/posts/:id/comment", async (req, res) => {
   const post = await Post.findById(req.params.id);
   if (!post) return res.sendStatus(404);
 
-  post.comments.push({
-    userId,
-    text,
-    time: new Date().toLocaleString()
-  });
-
+  post.comments.push({ userId, text, time: new Date().toLocaleString() });
   await post.save();
   res.json(post);
 });
