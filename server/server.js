@@ -12,8 +12,11 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= MONGODB ================= */
 
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/pyrexxbook";
+
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("MongoDB error:", err));
 
@@ -52,8 +55,13 @@ const PostSchema = new mongoose.Schema({
 
 const StorySchema = new mongoose.Schema({
   userId: String,
+  name: String,
+  avatar: String,
   image: String,
-  createdAt: Number
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
 const User = mongoose.model("User", UserSchema);
@@ -75,24 +83,26 @@ const upload = multer({ storage });
 app.post("/api/auth/register", async (req, res) => {
   try {
     let { name, email, password } = req.body;
-
     if (!name || !email || !password)
       return res.status(400).json({ message: "All fields required" });
 
-    email = email.toLowerCase().trim();
+    email = email.trim().toLowerCase();
     const username = name.toLowerCase().replace(/\s+/g, "");
 
-    const exists = await User.findOne({ email });
+    const exists = await User.findOne({
+      email: new RegExp("^" + email + "$", "i")
+    });
+
     if (exists)
       return res.status(400).json({ message: "User already exists" });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
       username,
       email,
-      password: hashedPassword,
+      password: hashed,
       avatar: "/uploads/default.png",
       cover: "/uploads/cover-default.jpg",
       bio: "",
@@ -103,11 +113,12 @@ app.post("/api/auth/register", async (req, res) => {
 
     res.json({ user });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    console.error("REGISTER ERROR:", e);
+    res.status(500).json({ message: "Registration failed" });
   }
 });
 
-// LOGIN (HARDENED)
+// LOGIN
 app.post("/api/auth/login", async (req, res) => {
   try {
     let { email, password } = req.body;
@@ -115,64 +126,71 @@ app.post("/api/auth/login", async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: "Missing credentials" });
 
-    email = email.toLowerCase().trim();
+    email = email.trim().toLowerCase();
 
     const user = await User.findOne({
-      $or: [{ email }, { username: email }]
+      $or: [
+        { email: new RegExp("^" + email + "$", "i") },
+        { username: new RegExp("^" + email + "$", "i") }
+      ]
     });
 
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
 
-    let match = false;
-
-    // bcrypt password
-    if (user.password.startsWith("$2b$") || user.password.startsWith("$2a$")) {
-      match = await bcrypt.compare(password, user.password);
-    } else {
-      // legacy plain text password
-      if (password === user.password) {
-        const newHash = await bcrypt.hash(password, 10);
-        user.password = newHash;
-        await user.save();
-        match = true;
-      }
-    }
-
+    const match = await bcrypt.compare(password, user.password);
     if (!match)
       return res.status(401).json({ message: "Invalid email or password" });
 
     res.json({ user });
   } catch (e) {
-    console.error(e);
+    console.error("LOGIN ERROR:", e);
     res.status(500).json({ message: "Login failed" });
   }
 });
 
-// ADMIN PASSWORD RESET
-app.get("/api/auth/reset/:id/:newpass", async (req, res) => {
+/* ================= STORIES ================= */
+
+app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
   try {
-    const { id, newpass } = req.params;
-    const hashed = await bcrypt.hash(newpass, 10);
-    const user = await User.findByIdAndUpdate(id, { password: hashed }, { new: true });
-    res.json({ message: "Password reset", user });
+    const user = await User.findById(req.body.userId);
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    const story = await Story.create({
+      userId: user._id.toString(),
+      name: user.name,
+      avatar: user.avatar,
+      image: "/uploads/" + req.file.filename
+    });
+
+    res.json(story);
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    console.error("STORY UPLOAD ERROR:", e);
+    res.status(500).json({ message: "Story upload failed" });
   }
 });
 
-/* ================= USERS ================= */
+app.get("/api/stories/:userId", async (req, res) => {
+  const user = await User.findById(req.params.userId);
+  if (!user) return res.json([]);
 
-app.get("/api/users", async (req, res) => {
-  const users = await User.find();
-  res.json(users);
+  const ids = [user._id.toString(), ...user.following];
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const stories = await Story.find({
+    userId: { $in: ids },
+    createdAt: { $gte: yesterday }
+  }).sort({ createdAt: -1 });
+
+  res.json(stories);
 });
 
-app.get("/api/users/:username", async (req, res) => {
-  const user = await User.findOne({ username: req.params.username });
-  if (!user) return res.status(404).json({ message: "User not found" });
-  res.json(user);
-});
+/* Auto-delete expired stories */
+setInterval(async () => {
+  const expiry = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await Story.deleteMany({ createdAt: { $lt: expiry } });
+  console.log("Expired stories cleaned");
+}, 60 * 60 * 1000);
 
 /* ================= POSTS ================= */
 
@@ -183,10 +201,9 @@ app.get("/api/posts", async (req, res) => {
 
 app.post("/api/posts", async (req, res) => {
   try {
-    const { email, username, text } = req.body;
-
+    const { email, text } = req.body;
     const user = await User.findOne({
-      $or: [{ email }, { username }]
+      email: new RegExp("^" + email + "$", "i")
     });
 
     if (!user) return res.status(400).json({ message: "User not found" });
@@ -203,58 +220,10 @@ app.post("/api/posts", async (req, res) => {
     });
 
     res.json(post);
-  } catch {
+  } catch (e) {
+    console.error("POST ERROR:", e);
     res.status(500).json({ message: "Post failed" });
   }
-});
-
-/* ================= LIKE ================= */
-
-app.post("/api/posts/:id/like", async (req, res) => {
-  const { userId } = req.body;
-  const post = await Post.findById(req.params.id);
-  if (!post) return res.sendStatus(404);
-
-  if (post.likes.includes(userId)) {
-    post.likes = post.likes.filter(id => id !== userId);
-  } else {
-    post.likes.push(userId);
-  }
-
-  await post.save();
-  res.json(post);
-});
-
-/* ================= COMMENT ================= */
-
-app.post("/api/posts/:id/comment", async (req, res) => {
-  const { userId, text } = req.body;
-  const post = await Post.findById(req.params.id);
-  if (!post) return res.sendStatus(404);
-
-  post.comments.push({ userId, text, time: new Date().toLocaleString() });
-  await post.save();
-  res.json(post);
-});
-
-/* ================= STORIES ================= */
-
-app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
-  const story = await Story.create({
-    userId: req.body.userId,
-    image: "/uploads/" + req.file.filename,
-    createdAt: Date.now()
-  });
-  res.json(story);
-});
-
-app.get("/api/stories/:userId", async (req, res) => {
-  const user = await User.findById(req.params.userId);
-  if (!user) return res.json([]);
-
-  const ids = [user._id.toString(), ...user.following];
-  const stories = await Story.find({ userId: { $in: ids } });
-  res.json(stories);
 });
 
 /* ================= SERVER ================= */

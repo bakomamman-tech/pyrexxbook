@@ -1,50 +1,63 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import API_BASE from "../utils/api";
+import "./Login.css";
 
-function Login() {
+export default function Login({ setUser }) {
+  const [isRegister, setIsRegister] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
 
-  const login = async (e) => {
-    e.preventDefault();
+  const submit = async () => {
     setError("");
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
+      const url = isRegister
+        ? "/api/auth/register"
+        : "/api/auth/login";
+
+      const body = isRegister
+        ? { name, email, password }
+        : { email, password };
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(body)
       });
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      if (!res.ok) {
+        setError(data.message || "Failed");
+        return;
+      }
 
-      // Store only the user object
       localStorage.setItem("user", JSON.stringify(data.user));
-
-      navigate("/");
-    } catch (err) {
-      setError(err.message);
+      setUser(data.user);
+    } catch {
+      setError("Server error");
     }
   };
 
   return (
-    <div style={styles.page}>
-      <form style={styles.card} onSubmit={login}>
-        <h2 style={{ color: "#1877f2" }}>PyrexxBook</h2>
+    <div className="login-page">
+      <div className="login-box">
+        <h2>{isRegister ? "Create Account" : "Login"}</h2>
 
-        {error && <p style={{ color: "red" }}>{error}</p>}
+        {isRegister && (
+          <input
+            placeholder="Full Name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
+        )}
 
         <input
-          placeholder="Email"
+          placeholder="Email or Username"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          style={styles.input}
-          required
         />
 
         <input
@@ -52,49 +65,23 @@ function Login() {
           placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          style={styles.input}
-          required
         />
 
-        <button style={styles.primaryBtn}>Log In</button>
-      </form>
+        <button onClick={submit}>
+          {isRegister ? "Create Account" : "Login"}
+        </button>
+
+        {error && <p style={{ color: "red" }}>{error}</p>}
+
+        <p
+          className="toggle"
+          onClick={() => setIsRegister(!isRegister)}
+        >
+          {isRegister
+            ? "Already have an account? Login"
+            : "Don't have an account? Create one"}
+        </p>
+      </div>
     </div>
   );
 }
-
-export default Login;
-
-const styles = {
-  page: {
-    height: "100vh",
-    background: "#f0f2f5",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center"
-  },
-  card: {
-    background: "white",
-    padding: 30,
-    borderRadius: 10,
-    width: 320,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-    textAlign: "center"
-  },
-  input: {
-    width: "100%",
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 6,
-    border: "1px solid #ddd"
-  },
-  primaryBtn: {
-    width: "100%",
-    background: "#1877f2",
-    color: "white",
-    padding: 10,
-    border: "none",
-    borderRadius: 6,
-    fontWeight: "bold",
-    cursor: "pointer"
-  }
-};

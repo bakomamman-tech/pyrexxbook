@@ -1,47 +1,43 @@
-import { Outlet } from "react-router-dom";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useState } from "react";
+
 import Login from "./components/Login";
+import Register from "./components/Register";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import Feed from "./Feed";
 
 function App() {
-  let user = null;
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch {
+      return null;
+    }
+  });
 
-  try {
-    user = JSON.parse(localStorage.getItem("user"));
-  } catch {
-    user = null;
-  }
-
-  if (!user) {
-    return <Login />;
-  }
+  const isLoggedIn = Boolean(user);
 
   return (
-    <div className="app">
-      <Navbar />
+    <>
+      {isLoggedIn && <Navbar />}
 
-      <div className="app-body">
-        <div className="app-inner">
+      <Routes>
+        {/* PUBLIC ROUTES */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-          {/* LEFT */}
-          <Sidebar />
+        {/* PROTECTED ROUTE */}
+        <Route
+          path="/"
+          element={isLoggedIn ? <Feed /> : <Navigate to="/login" />}
+        />
 
-          {/* CENTER (Feed / Profile / Pages) */}
-          <div className="feed-container">
-            <Outlet />
-          </div>
-
-          {/* RIGHT */}
-          <div className="rightbar">
-            <h3>Contacts</h3>
-            <p>Grace</p>
-            <p>Nomzi</p>
-            <p>David</p>
-          </div>
-
-        </div>
-      </div>
-    </div>
+        {/* FALLBACK */}
+        <Route path="*" element={<Navigate to={isLoggedIn ? "/" : "/login"} />} />
+      </Routes>
+    </>
   );
 }
 
