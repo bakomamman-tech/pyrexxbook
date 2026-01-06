@@ -1,14 +1,18 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API_BASE from "../utils/api";
 
-function Register({ onClose, onSuccess }) {
+function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const register = async () => {
+  const register = async (e) => {
+    e.preventDefault();
+
     if (!name || !email || !password) {
       return setError("All fields are required");
     }
@@ -29,8 +33,10 @@ function Register({ onClose, onSuccess }) {
         throw new Error(data.message || "Registration failed");
       }
 
-      localStorage.setItem("user", JSON.stringify(data));
-      onSuccess();
+      // Store only the user object
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      navigate("/");
     } catch (err) {
       setError(err.message || "Server not responding");
     } finally {
@@ -39,8 +45,8 @@ function Register({ onClose, onSuccess }) {
   };
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.card}>
+    <div style={styles.page}>
+      <form style={styles.card} onSubmit={register}>
         <h2>Create Account</h2>
 
         {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
@@ -48,28 +54,36 @@ function Register({ onClose, onSuccess }) {
         <input
           placeholder="Full name"
           value={name}
-          onChange={e => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value)}
+          required
         />
 
         <input
           placeholder="Email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
+          required
         />
 
         <input
           type="password"
           placeholder="Password"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
+          required
         />
 
-        <button onClick={register} disabled={loading}>
+        <button disabled={loading}>
           {loading ? "Creating..." : "Sign Up"}
         </button>
 
-        <p onClick={onClose} style={styles.link}>Cancel</p>
-      </div>
+        <p
+          onClick={() => navigate("/login")}
+          style={styles.link}
+        >
+          Already have an account? Log in
+        </p>
+      </form>
     </div>
   );
 }
@@ -77,10 +91,9 @@ function Register({ onClose, onSuccess }) {
 export default Register;
 
 const styles = {
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,.4)",
+  page: {
+    height: "100vh",
+    background: "#f0f2f5",
     display: "flex",
     justifyContent: "center",
     alignItems: "center"

@@ -1,17 +1,12 @@
-import ProfileCard from "./components/ProfileCard";
-import "./components/Feed.css";
-import Story from "./components/Story";
-import StoryModal from "./components/StoryModal";
-import ImageModal from "./components/ImageModal";
 import { useEffect, useState } from "react";
-import API_BASE from "./utils/api";
+import ProfileCard from "./components/ProfileCard";
+import StoryBar from "./components/StoryBar";
+import ImageModal from "./components/ImageModal";
+import "./Feed.css";
 
-function Feed() {
+export default function Feed() {
   const [posts, setPosts] = useState([]);
   const [text, setText] = useState("");
-  const [stories, setStories] = useState([]);
-  const [showStory, setShowStory] = useState(false);
-  const [storyIndex, setStoryIndex] = useState(0);
   const [selectedImage, setSelectedImage] = useState(null);
 
   let user = null;
@@ -21,6 +16,8 @@ function Feed() {
     user = null;
   }
 
+  if (!user) return <div style={{ padding: 20 }}>Please log in</div>;
+
   const avatarUrl = (name, avatar) => {
     if (!avatar) {
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -28,32 +25,23 @@ function Feed() {
       )}&background=C3005E&color=fff`;
     }
     if (avatar.startsWith("http")) return avatar;
-    return `${API_BASE}${avatar}`;
+    return avatar;
   };
 
   const loadPosts = () => {
-    fetch(`${API_BASE}/api/posts`)
+    fetch("/api/posts")
       .then(res => res.json())
       .then(data => setPosts(data || []));
   };
 
-  const loadStories = () => {
-    fetch(`${API_BASE}/api/stories/${user._id}`)
-      .then(res => res.json())
-      .then(data => setStories(data || []));
-  };
-
   useEffect(() => {
     loadPosts();
-    loadStories();
   }, []);
-
-  if (!user) return <div style={{ padding: "20px" }}>Please log in</div>;
 
   const createPost = () => {
     if (!text.trim()) return;
 
-    fetch(`${API_BASE}/api/posts`, {
+    fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -66,41 +54,15 @@ function Feed() {
     });
   };
 
-  const likePost = id => {
-    fetch(`${API_BASE}/api/posts/${id}/like`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user._id })
-    }).then(loadPosts);
-  };
-
-  const addComment = (id, text) => {
-    if (!text.trim()) return;
-
-    fetch(`${API_BASE}/api/posts/${id}/comment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user._id,
-        text
-      })
-    }).then(loadPosts);
-  };
-
   return (
     <div className="feed-container">
-
       <ProfileCard user={user} />
 
-      <Story
-        stories={stories}
-        setStories={setStories}
-        setShowStory={setShowStory}
-        setStoryIndex={setStoryIndex}
-      />
+      {/* Facebook-style Stories */}
+      <StoryBar user={user} />
 
       <div className="create-post">
-        <img src={avatarUrl(user.name, user.avatar)} alt={user.name} />
+        <img src={avatarUrl(user.name, user.avatar)} alt="" />
         <textarea
           placeholder={`What's on your mind, ${user.name}?`}
           value={text}
@@ -112,7 +74,7 @@ function Feed() {
       {posts.map(post => (
         <div className="post" key={post._id}>
           <div className="post-header">
-            <img src={avatarUrl(post.name, post.avatar)} alt={post.name} />
+            <img src={avatarUrl(post.name, post.avatar)} alt="" />
             <div>
               <div className="post-name">{post.name}</div>
               <div className="post-time">{post.time}</div>
@@ -123,48 +85,14 @@ function Feed() {
 
           {post.image && (
             <img
-              src={`${API_BASE}${post.image}`}
+              src={post.image}
               className="post-image"
-              onClick={() => setSelectedImage(`${API_BASE}${post.image}`)}
+              onClick={() => setSelectedImage(post.image)}
               alt=""
             />
           )}
-
-          <div className="post-actions">
-            <button onClick={() => likePost(post._id)}>
-              👍 Like ({post.likes?.length || 0})
-            </button>
-          </div>
-
-          {/* COMMENTS */}
-          <div className="comments">
-            {(post.comments || []).map((c, i) => (
-              <div key={i} className="comment">
-                <b>{c.userId === user._id ? "You" : "User"}:</b> {c.text}
-              </div>
-            ))}
-
-            <input
-              className="comment-input"
-              placeholder="Write a comment..."
-              onKeyDown={e => {
-                if (e.key === "Enter") {
-                  addComment(post._id, e.target.value);
-                  e.target.value = "";
-                }
-              }}
-            />
-          </div>
         </div>
       ))}
-
-      {showStory && (
-        <StoryModal
-          stories={stories}
-          storyIndex={storyIndex}
-          setShowStory={setShowStory}
-        />
-      )}
 
       {selectedImage && (
         <ImageModal
@@ -175,5 +103,3 @@ function Feed() {
     </div>
   );
 }
-
-export default Feed;
