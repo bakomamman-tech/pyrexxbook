@@ -11,11 +11,14 @@ app.use(express.json());
 
 /* ================= PATHS ================= */
 
+// Where uploaded images go
 const UPLOADS_PATH = path.join(__dirname, "uploads");
-const FRONTEND_PATH = path.join(process.cwd(), "vite-project", "dist");
 
-console.log("Uploads:", UPLOADS_PATH);
-console.log("Frontend:", FRONTEND_PATH);
+// Where Render puts your Vite build
+const FRONTEND_PATH = "/opt/render/project/src/vite-project/dist";
+
+console.log("Uploads folder:", UPLOADS_PATH);
+console.log("Frontend build folder:", FRONTEND_PATH);
 
 app.use("/uploads", express.static(UPLOADS_PATH));
 app.use(express.static(FRONTEND_PATH));
@@ -212,6 +215,7 @@ app.get("/api/stories/:userId", async (req, res) => {
 
 /* ================= FRONTEND ================= */
 
+// Send React app for any route
 app.get("*", (req, res) => {
   res.sendFile(path.join(FRONTEND_PATH, "index.html"));
 });
