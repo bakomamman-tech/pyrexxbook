@@ -11,8 +11,11 @@ app.use(express.json());
 
 /* ================= PATHS ================= */
 
+// uploads stay inside server
 const UPLOADS_PATH = path.join(__dirname, "uploads");
-const FRONTEND_PATH = path.join(__dirname, "public");
+
+// Vite build lives here on Render
+const FRONTEND_PATH = path.join(__dirname, "..", "vite-project", "dist");
 
 console.log("Uploads:", UPLOADS_PATH);
 console.log("Frontend:", FRONTEND_PATH);
@@ -213,7 +216,7 @@ app.get("/api/stories/:userId", async (req, res) => {
 
 /* ================= FRONTEND (EXPRESS 5 SAFE) ================= */
 
-// This is the ONLY valid wildcard in Express 5
+// Regex wildcard required by Express 5
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(FRONTEND_PATH, "index.html"));
 });
