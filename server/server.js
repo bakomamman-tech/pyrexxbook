@@ -71,7 +71,7 @@ const Story = mongoose.model("Story", StorySchema);
 /* ================= MULTER ================= */
 
 const storage = multer.diskStorage({
-  destination: "uploads",
+  destination: path.join(__dirname, "uploads"),
   filename: (req, file, cb) =>
     cb(null, Date.now() + path.extname(file.originalname))
 });
@@ -79,7 +79,6 @@ const upload = multer({ storage });
 
 /* ================= AUTH ================= */
 
-// REGISTER
 app.post("/api/auth/register", async (req, res) => {
   try {
     let { name, email, password } = req.body;
@@ -118,13 +117,9 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// LOGIN
 app.post("/api/auth/login", async (req, res) => {
   try {
     let { email, password } = req.body;
-
-    if (!email || !password)
-      return res.status(400).json({ message: "Missing credentials" });
 
     email = email.trim().toLowerCase();
 
@@ -135,12 +130,10 @@ app.post("/api/auth/login", async (req, res) => {
       ]
     });
 
-    if (!user)
-      return res.status(401).json({ message: "Invalid email or password" });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match)
-      return res.status(401).json({ message: "Invalid email or password" });
+    if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
     res.json({ user });
   } catch (e) {
@@ -185,13 +178,6 @@ app.get("/api/stories/:userId", async (req, res) => {
   res.json(stories);
 });
 
-/* Auto-delete expired stories */
-setInterval(async () => {
-  const expiry = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  await Story.deleteMany({ createdAt: { $lt: expiry } });
-  console.log("Expired stories cleaned");
-}, 60 * 60 * 1000);
-
 /* ================= POSTS ================= */
 
 app.get("/api/posts", async (req, res) => {
@@ -202,6 +188,7 @@ app.get("/api/posts", async (req, res) => {
 app.post("/api/posts", async (req, res) => {
   try {
     const { email, text } = req.body;
+
     const user = await User.findOne({
       email: new RegExp("^" + email + "$", "i")
     });
@@ -226,7 +213,15 @@ app.post("/api/posts", async (req, res) => {
   }
 });
 
+/* ================= FRONTEND ================= */
+
+app.use(express.static(path.join(__dirname, "../vite-project/dist")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../vite-project/dist/index.html"));
+});
+
 /* ================= SERVER ================= */
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on", PORT));
