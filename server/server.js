@@ -11,17 +11,10 @@ app.use(express.json());
 
 /* ================= PATHS ================= */
 
-// uploads stay inside server
 const UPLOADS_PATH = path.join(__dirname, "uploads");
-
-// Vite build lives here on Render
-const FRONTEND_PATH = path.join(__dirname, "..", "vite-project", "dist");
+app.use("/uploads", express.static(UPLOADS_PATH));
 
 console.log("Uploads:", UPLOADS_PATH);
-console.log("Frontend:", FRONTEND_PATH);
-
-app.use("/uploads", express.static(UPLOADS_PATH));
-app.use(express.static(FRONTEND_PATH));
 
 /* ================= MONGODB ================= */
 
@@ -212,13 +205,6 @@ app.get("/api/stories/:userId", async (req, res) => {
   }).sort({ createdAt: -1 });
 
   res.json(stories);
-});
-
-/* ================= FRONTEND (EXPRESS 5 SAFE) ================= */
-
-// Regex wildcard required by Express 5
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(FRONTEND_PATH, "index.html"));
 });
 
 /* ================= SERVER ================= */
