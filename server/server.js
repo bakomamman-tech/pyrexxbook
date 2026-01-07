@@ -8,7 +8,17 @@ const bcrypt = require("bcrypt");
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+/* ================= PATHS ================= */
+
+const UPLOADS_PATH = path.join(__dirname, "uploads");
+const FRONTEND_PATH = path.join(process.cwd(), "vite-project", "dist");
+
+console.log("Uploads:", UPLOADS_PATH);
+console.log("Frontend:", FRONTEND_PATH);
+
+app.use("/uploads", express.static(UPLOADS_PATH));
+app.use(express.static(FRONTEND_PATH));
 
 /* ================= MONGODB ================= */
 
@@ -58,10 +68,7 @@ const StorySchema = new mongoose.Schema({
   name: String,
   avatar: String,
   image: String,
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  createdAt: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model("User", UserSchema);
@@ -71,7 +78,7 @@ const Story = mongoose.model("Story", StorySchema);
 /* ================= MULTER ================= */
 
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, "uploads"),
+  destination: UPLOADS_PATH,
   filename: (req, file, cb) =>
     cb(null, Date.now() + path.extname(file.originalname))
 });
@@ -91,7 +98,6 @@ app.post("/api/auth/register", async (req, res) => {
     const exists = await User.findOne({
       email: new RegExp("^" + email + "$", "i")
     });
-
     if (exists)
       return res.status(400).json({ message: "User already exists" });
 
@@ -112,7 +118,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     res.json({ user });
   } catch (e) {
-    console.error("REGISTER ERROR:", e);
+    console.error(e);
     res.status(500).json({ message: "Registration failed" });
   }
 });
@@ -120,7 +126,6 @@ app.post("/api/auth/register", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     let { email, password } = req.body;
-
     email = email.trim().toLowerCase();
 
     const user = await User.findOne({
@@ -137,30 +142,57 @@ app.post("/api/auth/login", async (req, res) => {
 
     res.json({ user });
   } catch (e) {
-    console.error("LOGIN ERROR:", e);
     res.status(500).json({ message: "Login failed" });
+  }
+});
+
+/* ================= POSTS ================= */
+
+app.get("/api/posts", async (req, res) => {
+  const posts = await Post.find().sort({ _id: -1 });
+  res.json(posts);
+});
+
+app.post("/api/posts", async (req, res) => {
+  try {
+    const { email, text } = req.body;
+
+    const user = await User.findOne({
+      email: new RegExp("^" + email + "$", "i")
+    });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    const post = await Post.create({
+      userId: user._id.toString(),
+      name: user.name,
+      username: user.username,
+      avatar: user.avatar,
+      text,
+      time: new Date().toLocaleString(),
+      likes: [],
+      comments: []
+    });
+
+    res.json(post);
+  } catch (e) {
+    res.status(500).json({ message: "Post failed" });
   }
 });
 
 /* ================= STORIES ================= */
 
 app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
-  try {
-    const user = await User.findById(req.body.userId);
-    if (!user) return res.status(400).json({ message: "User not found" });
+  const user = await User.findById(req.body.userId);
+  if (!user) return res.status(400).json({ message: "User not found" });
 
-    const story = await Story.create({
-      userId: user._id.toString(),
-      name: user.name,
-      avatar: user.avatar,
-      image: "/uploads/" + req.file.filename
-    });
+  const story = await Story.create({
+    userId: user._id.toString(),
+    name: user.name,
+    avatar: user.avatar,
+    image: "/uploads/" + req.file.filename
+  });
 
-    res.json(story);
-  } catch (e) {
-    console.error("STORY UPLOAD ERROR:", e);
-    res.status(500).json({ message: "Story upload failed" });
-  }
+  res.json(story);
 });
 
 app.get("/api/stories/:userId", async (req, res) => {
@@ -178,47 +210,10 @@ app.get("/api/stories/:userId", async (req, res) => {
   res.json(stories);
 });
 
-/* ================= POSTS ================= */
-
-app.get("/api/posts", async (req, res) => {
-  const posts = await Post.find().sort({ _id: -1 });
-  res.json(posts);
-});
-
-app.post("/api/posts", async (req, res) => {
-  try {
-    const { email, text } = req.body;
-
-    const user = await User.findOne({
-      email: new RegExp("^" + email + "$", "i")
-    });
-
-    if (!user) return res.status(400).json({ message: "User not found" });
-
-    const post = await Post.create({
-      userId: user._id.toString(),
-      name: user.name,
-      username: user.username,
-      avatar: user.avatar,
-      text,
-      time: new Date().toLocaleString(),
-      likes: [],
-      comments: []
-    });
-
-    res.json(post);
-  } catch (e) {
-    console.error("POST ERROR:", e);
-    res.status(500).json({ message: "Post failed" });
-  }
-});
-
 /* ================= FRONTEND ================= */
 
-app.use(express.static(path.join(__dirname, "../vite-project/dist")));
-
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../vite-project/dist/index.html"));
+  res.sendFile(path.join(FRONTEND_PATH, "index.html"));
 });
 
 /* ================= SERVER ================= */
