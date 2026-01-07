@@ -211,10 +211,10 @@ app.get("/api/stories/:userId", async (req, res) => {
   res.json(stories);
 });
 
-/* ================= FRONTEND (FIXED) ================= */
+/* ================= FRONTEND (EXPRESS 5 SAFE) ================= */
 
-// Express 5 / Node 22 SAFE catch-all
-app.get("*", (req, res) => {
+// This is the ONLY valid wildcard in Express 5
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(FRONTEND_PATH, "index.html"));
 });
 
