@@ -47,10 +47,16 @@ export default function Login({ setUser }) {
         return;
       }
 
-      // ✅ Extract the real user
-      const user = data.user || data;
+      // 🔥 ALWAYS normalize the user object
+      const user = data.user ? data.user : data;
 
-      // ✅ Save correct user object
+      if (!user || !user._id) {
+        setError("Invalid login response");
+        setLoading(false);
+        return;
+      }
+
+      // 🔥 Store the correct object
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
 

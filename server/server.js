@@ -9,16 +9,19 @@ const app = express();
 
 /* ================= CORS ================= */
 
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "https://pyrexxbook-kurah.onrender.com"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175",
+      "https://pyrexxbook-kurah.onrender.com", // frontend
+      "https://pyrexxbook-kurah-backend.onrender.com" // backend safety
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+  })
+);
 
 app.use(express.json());
 
@@ -29,107 +32,90 @@ app.use("/uploads", express.static(UPLOADS_PATH));
 
 /* ================= MONGODB ================= */
 
-const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/pyrexxbook";
-
 mongoose
-  .connect(MONGO_URI)
+  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/pyrexxbook")
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("MongoDB error:", err));
 
 /* ================= MODELS ================= */
 
-const UserSchema = new mongoose.Schema({
-  name: String,
-  username: String,
-  email: String,
-  password: String,
-  avatar: String,
-  cover: String,
-  bio: String,
-  joined: String,
-  followers: [String],
-  following: [String]
-});
+const User = mongoose.model(
+  "User",
+  new mongoose.Schema({
+    name: String,
+    username: String,
+    email: String,
+    password: String,
+    avatar: String,
+    cover: String,
+    bio: String,
+    joined: String,
+    followers: [String],
+    following: [String]
+  })
+);
 
-const PostSchema = new mongoose.Schema({
-  userId: String,
-  name: String,
-  username: String,
-  avatar: String,
-  text: String,
-  image: String,
-  time: String,
-  likes: [String],
-  comments: [
-    {
-      userId: String,
-      text: String,
-      time: String
-    }
-  ]
-});
+const Post = mongoose.model(
+  "Post",
+  new mongoose.Schema({
+    userId: String,
+    name: String,
+    username: String,
+    avatar: String,
+    text: String,
+    image: String,
+    time: String,
+    likes: [String],
+    comments: [{ userId: String, text: String, time: String }]
+  })
+);
 
-const StorySchema = new mongoose.Schema({
-  userId: String,
-  name: String,
-  avatar: String,
-  image: String,
-  createdAt: { type: Date, default: Date.now }
-});
+const Story = mongoose.model(
+  "Story",
+  new mongoose.Schema({
+    userId: String,
+    name: String,
+    avatar: String,
+    image: String,
+    createdAt: { type: Date, default: Date.now }
+  })
+);
 
-/* 🔥 MESSENGER MODELS */
+const Conversation = mongoose.model(
+  "Conversation",
+  new mongoose.Schema({
+    members: [String],
+    lastMessage: String,
+    updatedAt: { type: Date, default: Date.now }
+  })
+);
 
-const ConversationSchema = new mongoose.Schema({
-  members: [String],
-  lastMessage: String,
-  updatedAt: { type: Date, default: Date.now }
-});
-
-const MessageSchema = new mongoose.Schema({
-  conversationId: String,
-  senderId: String,
-  text: String,
-  time: String
-});
-
-const User = mongoose.model("User", UserSchema);
-const Post = mongoose.model("Post", PostSchema);
-const Story = mongoose.model("Story", StorySchema);
-const Conversation = mongoose.model("Conversation", ConversationSchema);
-const Message = mongoose.model("Message", MessageSchema);
-
-/* ================= MULTER ================= */
-
-const storage = multer.diskStorage({
-  destination: UPLOADS_PATH,
-  filename: (req, file, cb) =>
-    cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
+const Message = mongoose.model(
+  "Message",
+  new mongoose.Schema({
+    conversationId: String,
+    senderId: String,
+    text: String,
+    time: String
+  })
+);
 
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", async (req, res) => {
   try {
     let { name, email, password } = req.body;
+    email = email.trim().toLowerCase();
 
     if (!name || !email || !password)
       return res.status(400).json({ message: "All fields required" });
-
-    email = email.trim().toLowerCase();
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email))
-      return res.status(400).json({ message: "Enter a valid email address" });
-
-    const username = name.toLowerCase().replace(/\s+/g, "");
 
     const exists = await User.findOne({ email });
     if (exists)
       return res.status(400).json({ message: "Email already registered" });
 
     const hashed = await bcrypt.hash(password, 10);
+    const username = name.toLowerCase().replace(/\s+/g, "");
 
     const user = await User.create({
       name,
@@ -145,7 +131,8 @@ app.post("/api/auth/register", async (req, res) => {
     });
 
     res.json({ user });
-  } catch {
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -180,7 +167,6 @@ app.get("/api/posts", async (req, res) => {
 app.post("/api/posts", async (req, res) => {
   try {
     const { email, text } = req.body;
-
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "User not found" });
 
@@ -204,83 +190,64 @@ app.post("/api/posts", async (req, res) => {
 /* ❤️ LIKE */
 
 app.post("/api/posts/like/:postId", async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const post = await Post.findById(req.params.postId);
+  const post = await Post.findById(req.params.postId);
+  const { userId } = req.body;
 
-    if (!post) return res.status(404).json({ message: "Post not found" });
+  const index = post.likes.indexOf(userId);
+  index === -1 ? post.likes.push(userId) : post.likes.splice(index, 1);
 
-    const index = post.likes.indexOf(userId);
-    if (index === -1) post.likes.push(userId);
-    else post.likes.splice(index, 1);
-
-    await post.save();
-    res.json(post);
-  } catch {
-    res.status(500).json({ message: "Like failed" });
-  }
+  await post.save();
+  res.json(post);
 });
 
 /* 💬 COMMENT */
 
 app.post("/api/posts/comment/:postId", async (req, res) => {
-  try {
-    const { userId, text } = req.body;
-    const post = await Post.findById(req.params.postId);
+  const post = await Post.findById(req.params.postId);
 
-    post.comments.push({
-      userId,
-      text,
-      time: new Date().toLocaleString()
-    });
+  post.comments.push({
+    userId: req.body.userId,
+    text: req.body.text,
+    time: new Date().toLocaleString()
+  });
 
-    await post.save();
-    res.json(post);
-  } catch {
-    res.status(500).json({ message: "Comment failed" });
-  }
+  await post.save();
+  res.json(post);
 });
 
 /* 👥 FOLLOW */
 
 app.post("/api/users/follow/:targetId", async (req, res) => {
-  const { userId } = req.body;
-  const targetId = req.params.targetId;
+  const user = await User.findById(req.body.userId);
+  const target = await User.findById(req.params.targetId);
 
-  const user = await User.findById(userId);
-  const target = await User.findById(targetId);
+  const i = user.following.indexOf(target._id.toString());
 
-  const isFollowing = user.following.includes(targetId);
-
-  if (isFollowing) {
-    user.following = user.following.filter(id => id !== targetId);
-    target.followers = target.followers.filter(id => id !== userId);
+  if (i === -1) {
+    user.following.push(target._id);
+    target.followers.push(user._id);
   } else {
-    user.following.push(targetId);
-    target.followers.push(userId);
+    user.following.splice(i, 1);
+    target.followers = target.followers.filter(id => id !== user._id.toString());
   }
 
   await user.save();
   await target.save();
-
   res.json({ following: user.following, followers: target.followers });
 });
 
 /* ================= MESSENGER ================= */
 
 app.post("/api/conversations", async (req, res) => {
-  const { senderId, receiverId } = req.body;
-
   let convo = await Conversation.findOne({
-    members: { $all: [senderId, receiverId] }
+    members: { $all: [req.body.senderId, req.body.receiverId] }
   });
 
-  if (!convo) {
+  if (!convo)
     convo = await Conversation.create({
-      members: [senderId, receiverId],
+      members: [req.body.senderId, req.body.receiverId],
       lastMessage: ""
     });
-  }
 
   res.json(convo);
 });
@@ -289,30 +256,23 @@ app.get("/api/conversations/:userId", async (req, res) => {
   const convos = await Conversation.find({
     members: req.params.userId
   }).sort({ updatedAt: -1 });
-
   res.json(convos);
 });
 
 app.get("/api/messages/:conversationId", async (req, res) => {
-  const msgs = await Message.find({
-    conversationId: req.params.conversationId
-  });
-
-  res.json(msgs);
+  res.json(await Message.find({ conversationId: req.params.conversationId }));
 });
 
 app.post("/api/messages", async (req, res) => {
-  const { conversationId, senderId, text } = req.body;
-
   const msg = await Message.create({
-    conversationId,
-    senderId,
-    text,
+    conversationId: req.body.conversationId,
+    senderId: req.body.senderId,
+    text: req.body.text,
     time: new Date().toLocaleString()
   });
 
-  await Conversation.findByIdAndUpdate(conversationId, {
-    lastMessage: text,
+  await Conversation.findByIdAndUpdate(req.body.conversationId, {
+    lastMessage: req.body.text,
     updatedAt: new Date()
   });
 
@@ -321,5 +281,6 @@ app.post("/api/messages", async (req, res) => {
 
 /* ================= SERVER ================= */
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("Server running on", PORT));
+app.listen(process.env.PORT || 10000, () =>
+  console.log("Server running on port 10000")
+);
