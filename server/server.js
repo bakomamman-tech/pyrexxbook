@@ -15,10 +15,9 @@ app.use(
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:5175",
-      "https://pyrexxbook-kurah.onrender.com", // frontend
-      "https://pyrexxbook-kurah-backend.onrender.com" // backend safety
+      "https://pyrexxbook-kurah.onrender.com",
+      "https://pyrexxbook-kurah-backend.onrender.com"
     ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   })
 );
@@ -100,6 +99,15 @@ const Message = mongoose.model(
   })
 );
 
+/* ================= MULTER ================= */
+
+const storage = multer.diskStorage({
+  destination: UPLOADS_PATH,
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage });
+
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", async (req, res) => {
@@ -110,8 +118,7 @@ app.post("/api/auth/register", async (req, res) => {
     if (!name || !email || !password)
       return res.status(400).json({ message: "All fields required" });
 
-    const exists = await User.findOne({ email });
-    if (exists)
+    if (await User.findOne({ email }))
       return res.status(400).json({ message: "Email already registered" });
 
     const hashed = await bcrypt.hash(password, 10);
@@ -131,8 +138,7 @@ app.post("/api/auth/register", async (req, res) => {
     });
 
     res.json({ user });
-  } catch (e) {
-    console.error(e);
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -148,8 +154,8 @@ app.post("/api/auth/login", async (req, res) => {
 
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+    if (!(await bcrypt.compare(password, user.password)))
+      return res.status(401).json({ message: "Invalid credentials" });
 
     res.json({ user });
   } catch {
@@ -160,28 +166,26 @@ app.post("/api/auth/login", async (req, res) => {
 /* ================= POSTS ================= */
 
 app.get("/api/posts", async (req, res) => {
-  const posts = await Post.find().sort({ _id: -1 });
-  res.json(posts);
+  res.json(await Post.find().sort({ _id: -1 }));
 });
 
 app.post("/api/posts", async (req, res) => {
   try {
-    const { email, text } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: req.body.email });
     if (!user) return res.status(400).json({ message: "User not found" });
 
-    const post = await Post.create({
-      userId: user._id.toString(),
-      name: user.name,
-      username: user.username,
-      avatar: user.avatar,
-      text,
-      time: new Date().toLocaleString(),
-      likes: [],
-      comments: []
-    });
-
-    res.json(post);
+    res.json(
+      await Post.create({
+        userId: user._id.toString(),
+        name: user.name,
+        username: user.username,
+        avatar: user.avatar,
+        text: req.body.text,
+        time: new Date().toLocaleString(),
+        likes: [],
+        comments: []
+      })
+    );
   } catch {
     res.status(500).json({ message: "Post failed" });
   }
@@ -191,10 +195,10 @@ app.post("/api/posts", async (req, res) => {
 
 app.post("/api/posts/like/:postId", async (req, res) => {
   const post = await Post.findById(req.params.postId);
-  const { userId } = req.body;
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
-  const index = post.likes.indexOf(userId);
-  index === -1 ? post.likes.push(userId) : post.likes.splice(index, 1);
+  const i = post.likes.indexOf(req.body.userId);
+  i === -1 ? post.likes.push(req.body.userId) : post.likes.splice(i, 1);
 
   await post.save();
   res.json(post);
@@ -204,6 +208,7 @@ app.post("/api/posts/like/:postId", async (req, res) => {
 
 app.post("/api/posts/comment/:postId", async (req, res) => {
   const post = await Post.findById(req.params.postId);
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
   post.comments.push({
     userId: req.body.userId,
@@ -215,25 +220,43 @@ app.post("/api/posts/comment/:postId", async (req, res) => {
   res.json(post);
 });
 
-/* 👥 FOLLOW */
+/* ================= STORIES ================= */
 
-app.post("/api/users/follow/:targetId", async (req, res) => {
-  const user = await User.findById(req.body.userId);
-  const target = await User.findById(req.params.targetId);
+app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
+  try {
+    const user = await User.findById(req.body.userId);
+    if (!user) return res.status(400).json({ message: "User not found" });
 
-  const i = user.following.indexOf(target._id.toString());
-
-  if (i === -1) {
-    user.following.push(target._id);
-    target.followers.push(user._id);
-  } else {
-    user.following.splice(i, 1);
-    target.followers = target.followers.filter(id => id !== user._id.toString());
+    res.json(
+      await Story.create({
+        userId: user._id.toString(),
+        name: user.name,
+        avatar: user.avatar,
+        image: "/uploads/" + req.file.filename
+      })
+    );
+  } catch {
+    res.status(500).json({ message: "Story upload failed" });
   }
+});
 
-  await user.save();
-  await target.save();
-  res.json({ following: user.following, followers: target.followers });
+app.get("/api/stories/:userId", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.json([]);
+
+    const ids = [user._id.toString(), ...user.following];
+    const yesterday = new Date(Date.now() - 86400000);
+
+    res.json(
+      await Story.find({
+        userId: { $in: ids },
+        createdAt: { $gte: yesterday }
+      }).sort({ createdAt: -1 })
+    );
+  } catch {
+    res.json([]);
+  }
 });
 
 /* ================= MESSENGER ================= */
@@ -253,10 +276,11 @@ app.post("/api/conversations", async (req, res) => {
 });
 
 app.get("/api/conversations/:userId", async (req, res) => {
-  const convos = await Conversation.find({
-    members: req.params.userId
-  }).sort({ updatedAt: -1 });
-  res.json(convos);
+  res.json(
+    await Conversation.find({ members: req.params.userId }).sort({
+      updatedAt: -1
+    })
+  );
 });
 
 app.get("/api/messages/:conversationId", async (req, res) => {
