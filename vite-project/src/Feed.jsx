@@ -8,6 +8,7 @@ import "./Feed.css";
 export default function Feed() {
   const [posts, setPosts] = useState([]);
   const [text, setText] = useState("");
+  const [commentText, setCommentText] = useState({});
   const [selectedImage, setSelectedImage] = useState(null);
 
   const user = (() => {
@@ -28,7 +29,7 @@ export default function Feed() {
     return `${API_BASE}${avatar}`;
   };
 
-  // 🔥 Load posts ONCE without useEffect
+  // Load posts once
   if (user && posts.length === 0) {
     fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
@@ -64,6 +65,24 @@ export default function Feed() {
     setPosts(posts.map(p => (p._id === updated._id ? updated : p)));
   };
 
+  // 💬 Add comment
+  const addComment = async postId => {
+    if (!commentText[postId]) return;
+
+    const res = await fetch(`${API_BASE}/api/posts/comment/${postId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user._id,
+        text: commentText[postId]
+      })
+    });
+
+    const updated = await res.json();
+    setPosts(posts.map(p => (p._id === updated._id ? updated : p)));
+    setCommentText({ ...commentText, [postId]: "" });
+  };
+
   if (!user) return <div style={{ padding: 20 }}>Please log in</div>;
 
   return (
@@ -83,6 +102,7 @@ export default function Feed() {
 
       {posts.map(post => {
         const likes = post.likes || [];
+        const comments = post.comments || [];
 
         return (
           <div className="post" key={post._id}>
@@ -109,6 +129,26 @@ export default function Feed() {
               <button onClick={() => toggleLike(post._id)}>
                 {likes.includes(user._id) ? "❤️" : "🤍"} {likes.length}
               </button>
+            </div>
+
+            {/* 💬 Comments */}
+            <div className="comments">
+              {comments.map((c, i) => (
+                <div key={i} className="comment">
+                  <strong>{c.userId === user._id ? "You" : "User"}:</strong> {c.text}
+                </div>
+              ))}
+
+              <div className="comment-box">
+                <input
+                  placeholder="Write a comment..."
+                  value={commentText[post._id] || ""}
+                  onChange={e =>
+                    setCommentText({ ...commentText, [post._id]: e.target.value })
+                  }
+                />
+                <button onClick={() => addComment(post._id)}>Post</button>
+              </div>
             </div>
           </div>
         );
