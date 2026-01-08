@@ -78,9 +78,26 @@ const StorySchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+/* 🔥 MESSENGER MODELS */
+
+const ConversationSchema = new mongoose.Schema({
+  members: [String],
+  lastMessage: String,
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const MessageSchema = new mongoose.Schema({
+  conversationId: String,
+  senderId: String,
+  text: String,
+  time: String
+});
+
 const User = mongoose.model("User", UserSchema);
 const Post = mongoose.model("Post", PostSchema);
 const Story = mongoose.model("Story", StorySchema);
+const Conversation = mongoose.model("Conversation", ConversationSchema);
+const Message = mongoose.model("Message", MessageSchema);
 
 /* ================= MULTER ================= */
 
@@ -97,23 +114,20 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     let { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password)
       return res.status(400).json({ message: "All fields required" });
-    }
 
     email = email.trim().toLowerCase();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email))
       return res.status(400).json({ message: "Enter a valid email address" });
-    }
 
     const username = name.toLowerCase().replace(/\s+/g, "");
 
     const exists = await User.findOne({ email });
-    if (exists) {
+    if (exists)
       return res.status(400).json({ message: "Email already registered" });
-    }
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -187,7 +201,7 @@ app.post("/api/posts", async (req, res) => {
   }
 });
 
-/* ❤️ LIKE / UNLIKE */
+/* ❤️ LIKE */
 
 app.post("/api/posts/like/:postId", async (req, res) => {
   try {
@@ -207,17 +221,12 @@ app.post("/api/posts/like/:postId", async (req, res) => {
   }
 });
 
-/* 💬 ADD COMMENT */
+/* 💬 COMMENT */
 
 app.post("/api/posts/comment/:postId", async (req, res) => {
   try {
     const { userId, text } = req.body;
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(400).json({ message: "User not found" });
-
     const post = await Post.findById(req.params.postId);
-    if (!post) return res.status(404).json({ message: "Post not found" });
 
     post.comments.push({
       userId,
@@ -232,78 +241,82 @@ app.post("/api/posts/comment/:postId", async (req, res) => {
   }
 });
 
-/* 👥 FACEBOOK-STYLE FOLLOW */
+/* 👥 FOLLOW */
 
 app.post("/api/users/follow/:targetId", async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const targetId = req.params.targetId;
+  const { userId } = req.body;
+  const targetId = req.params.targetId;
 
-    if (userId === targetId)
-      return res.status(400).json({ message: "You cannot follow yourself" });
+  const user = await User.findById(userId);
+  const target = await User.findById(targetId);
 
-    const user = await User.findById(userId);
-    const target = await User.findById(targetId);
+  const isFollowing = user.following.includes(targetId);
 
-    if (!user || !target)
-      return res.status(404).json({ message: "User not found" });
-
-    const isFollowing = user.following.includes(targetId);
-
-    if (isFollowing) {
-      user.following = user.following.filter(id => id !== targetId);
-      target.followers = target.followers.filter(id => id !== userId);
-    } else {
-      user.following.push(targetId);
-      target.followers.push(userId);
-    }
-
-    await user.save();
-    await target.save();
-
-    const isFriend =
-      user.following.includes(targetId) &&
-      user.followers.includes(targetId);
-
-    res.json({
-      following: user.following,
-      followers: target.followers,
-      isFriend
-    });
-  } catch {
-    res.status(500).json({ message: "Follow failed" });
+  if (isFollowing) {
+    user.following = user.following.filter(id => id !== targetId);
+    target.followers = target.followers.filter(id => id !== userId);
+  } else {
+    user.following.push(targetId);
+    target.followers.push(userId);
   }
+
+  await user.save();
+  await target.save();
+
+  res.json({ following: user.following, followers: target.followers });
 });
 
-/* ================= STORIES ================= */
+/* ================= MESSENGER ================= */
 
-app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
-  const user = await User.findById(req.body.userId);
-  if (!user) return res.status(400).json({ message: "User not found" });
+app.post("/api/conversations", async (req, res) => {
+  const { senderId, receiverId } = req.body;
 
-  const story = await Story.create({
-    userId: user._id.toString(),
-    name: user.name,
-    avatar: user.avatar,
-    image: "/uploads/" + req.file.filename
+  let convo = await Conversation.findOne({
+    members: { $all: [senderId, receiverId] }
   });
 
-  res.json(story);
+  if (!convo) {
+    convo = await Conversation.create({
+      members: [senderId, receiverId],
+      lastMessage: ""
+    });
+  }
+
+  res.json(convo);
 });
 
-app.get("/api/stories/:userId", async (req, res) => {
-  const user = await User.findById(req.params.userId);
-  if (!user) return res.json([]);
+app.get("/api/conversations/:userId", async (req, res) => {
+  const convos = await Conversation.find({
+    members: req.params.userId
+  }).sort({ updatedAt: -1 });
 
-  const ids = [user._id.toString(), ...user.following];
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  res.json(convos);
+});
 
-  const stories = await Story.find({
-    userId: { $in: ids },
-    createdAt: { $gte: yesterday }
-  }).sort({ createdAt: -1 });
+app.get("/api/messages/:conversationId", async (req, res) => {
+  const msgs = await Message.find({
+    conversationId: req.params.conversationId
+  });
 
-  res.json(stories);
+  res.json(msgs);
+});
+
+app.post("/api/messages", async (req, res) => {
+  const { conversationId, senderId, text } = req.body;
+
+  const msg = await Message.create({
+    conversationId,
+    senderId,
+    text,
+    time: new Date().toLocaleString()
+  });
+
+  await Conversation.findByIdAndUpdate(conversationId, {
+    lastMessage: text,
+    updatedAt: new Date()
+  });
+
+  res.json(msg);
 });
 
 /* ================= SERVER ================= */
