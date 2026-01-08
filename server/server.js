@@ -88,7 +88,6 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + "-" + file.originalname);
   }
 });
-
 const upload = multer({ storage });
 
 /* ================= MODELS ================= */
@@ -117,20 +116,28 @@ const Post = mongoose.model("Post", new mongoose.Schema({
   comments: [{ userId: String, text: String, time: String }]
 }));
 
-/* ============ STORIES (24H AUTO DELETE) ============ */
+/* ============ STORIES WITH SEEN + 24H DELETE ============ */
 
 const StorySchema = new mongoose.Schema({
   userId: String,
   name: String,
   avatar: String,
   image: String,
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+
+  seenBy: [
+    {
+      userId: String,
+      name: String,
+      time: String
+    }
+  ]
 });
 
 StorySchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
 const Story = mongoose.model("Story", StorySchema);
 
-/* =============================================== */
+/* ===================================================== */
 
 const Conversation = mongoose.model("Conversation", new mongoose.Schema({
   members: [String],
@@ -200,6 +207,7 @@ app.post("/api/posts", async (req, res) => {
 
 /* ================= STORIES ================= */
 
+// Upload story
 app.post("/api/stories", upload.single("image"), async (req, res) => {
   const user = await User.findById(req.body.userId);
 
@@ -207,15 +215,34 @@ app.post("/api/stories", upload.single("image"), async (req, res) => {
     userId: user._id,
     name: user.name,
     avatar: user.avatar,
-    image: "/uploads/" + req.file.filename
+    image: "/uploads/" + req.file.filename,
+    seenBy: []
   });
 
   res.json(story);
 });
 
+// Get stories
 app.get("/api/stories", async (req, res) => {
   const stories = await Story.find().sort({ createdAt: -1 });
   res.json(stories);
+});
+
+// Mark story as seen 👁
+app.post("/api/stories/:id/seen", async (req, res) => {
+  const { userId, name } = req.body;
+  const story = await Story.findById(req.params.id);
+
+  if (!story.seenBy.some(v => v.userId === userId)) {
+    story.seenBy.push({
+      userId,
+      name,
+      time: new Date().toLocaleString()
+    });
+    await story.save();
+  }
+
+  res.json({ success: true });
 });
 
 /* ================= MESSENGER ================= */
@@ -235,16 +262,12 @@ app.post("/api/conversations", async (req, res) => {
 });
 
 app.get("/api/conversations/:userId", async (req, res) => {
-  const convos = await Conversation.find({
-    members: req.params.userId
-  });
+  const convos = await Conversation.find({ members: req.params.userId });
   res.json(convos);
 });
 
 app.get("/api/messages/:conversationId", async (req, res) => {
-  const messages = await Message.find({
-    conversationId: req.params.conversationId
-  });
+  const messages = await Message.find({ conversationId: req.params.conversationId });
   res.json(messages);
 });
 
