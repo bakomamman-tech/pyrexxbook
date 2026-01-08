@@ -1,0 +1,92 @@
+.messenger-popup {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 700px;
+  height: 450px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0,0,0,.3);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.messenger-header {
+  padding: 10px;
+  background: #c3005e;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+}
+
+.messenger-body {
+  display: flex;
+  flex: 1;
+}
+
+.messenger-left {
+  width: 30%;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.convo {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.convo.active {
+  background: #f0f0f0;
+}
+
+.messenger-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.me {
+  text-align: right;
+  background: #c3005e;
+  color: white;
+  margin: 5px;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.them {
+  background: #eee;
+  margin: 5px;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.send-box {
+  display: flex;
+  padding: 10px;
+}
+
+.send-box input {
+  flex: 1;
+  padding: 8px;
+}
+
+.messenger-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #c3005e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+}

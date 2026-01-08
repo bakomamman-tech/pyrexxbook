@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ProfileCard from "./components/ProfileCard";
 import StoryBar from "./components/StoryBar";
 import ImageModal from "./components/ImageModal";
+import Messenger from "./components/Messenger";
 import API_BASE from "./utils/api";
 import "./Feed.css";
 
@@ -11,6 +12,7 @@ export default function Feed() {
   const [commentText, setCommentText] = useState({});
   const [selectedImage, setSelectedImage] = useState(null);
   const [refresh, setRefresh] = useState(0);
+  const [showMessenger, setShowMessenger] = useState(false);
 
   const user = (() => {
     try {
@@ -30,7 +32,7 @@ export default function Feed() {
     return `${API_BASE}${avatar}`;
   };
 
-  // Always keep feed in sync
+  // 🔥 Always keep feed in sync
   useEffect(() => {
     if (!user) return;
 
@@ -147,6 +149,21 @@ export default function Feed() {
         <ImageModal
           src={selectedImage}
           onClose={() => setSelectedImage(null)}
+        />
+      )}
+
+      {/* 💬 Messenger Floating Button */}
+      <button
+        className="messenger-fab"
+        onClick={() => setShowMessenger(true)}
+      >
+        💬
+      </button>
+
+      {showMessenger && (
+        <Messenger
+          user={user}
+          onClose={() => setShowMessenger(false)}
         />
       )}
     </div>
