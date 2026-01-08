@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProfileCard from "./components/ProfileCard";
 import StoryBar from "./components/StoryBar";
 import ImageModal from "./components/ImageModal";
@@ -29,12 +29,20 @@ export default function Feed() {
     return `${API_BASE}${avatar}`;
   };
 
-  // Load posts once
-  if (user && posts.length === 0) {
+  // ✅ Load posts when component mounts OR user changes
+  useEffect(() => {
+    if (!user) return;
+
     fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
-      .then(data => setPosts(data || []));
-  }
+      .then(data => setPosts(data || []))
+      .catch(console.error);
+  }, [user]);
+
+  const reloadPosts = async () => {
+    const res = await fetch(`${API_BASE}/api/posts`);
+    setPosts(await res.json());
+  };
 
   const createPost = async () => {
     if (!text.trim()) return;
@@ -49,9 +57,7 @@ export default function Feed() {
     });
 
     setText("");
-
-    const res = await fetch(`${API_BASE}/api/posts`);
-    setPosts(await res.json());
+    reloadPosts();
   };
 
   const toggleLike = async postId => {
@@ -65,7 +71,6 @@ export default function Feed() {
     setPosts(posts.map(p => (p._id === updated._id ? updated : p)));
   };
 
-  // 💬 Add comment
   const addComment = async postId => {
     if (!commentText[postId]) return;
 
@@ -131,7 +136,6 @@ export default function Feed() {
               </button>
             </div>
 
-            {/* 💬 Comments */}
             <div className="comments">
               {comments.map((c, i) => (
                 <div key={i} className="comment">
