@@ -232,6 +232,49 @@ app.post("/api/posts/comment/:postId", async (req, res) => {
   }
 });
 
+/* 👥 FACEBOOK-STYLE FOLLOW */
+
+app.post("/api/users/follow/:targetId", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const targetId = req.params.targetId;
+
+    if (userId === targetId)
+      return res.status(400).json({ message: "You cannot follow yourself" });
+
+    const user = await User.findById(userId);
+    const target = await User.findById(targetId);
+
+    if (!user || !target)
+      return res.status(404).json({ message: "User not found" });
+
+    const isFollowing = user.following.includes(targetId);
+
+    if (isFollowing) {
+      user.following = user.following.filter(id => id !== targetId);
+      target.followers = target.followers.filter(id => id !== userId);
+    } else {
+      user.following.push(targetId);
+      target.followers.push(userId);
+    }
+
+    await user.save();
+    await target.save();
+
+    const isFriend =
+      user.following.includes(targetId) &&
+      user.followers.includes(targetId);
+
+    res.json({
+      following: user.following,
+      followers: target.followers,
+      isFriend
+    });
+  } catch {
+    res.status(500).json({ message: "Follow failed" });
+  }
+});
+
 /* ================= STORIES ================= */
 
 app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
