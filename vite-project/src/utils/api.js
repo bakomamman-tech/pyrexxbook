@@ -1,5 +1,5 @@
 const API_BASE =
-  import.meta.env.MODE === "development"
+  window.location.hostname === "localhost"
     ? "http://localhost:10000"
     : "https://pyrexxbook-kurah-backend.onrender.com";
 
