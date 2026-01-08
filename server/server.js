@@ -22,17 +22,25 @@ const io = new Server(server, {
   }
 });
 
+// userId -> socketId
 const onlineUsers = new Map();
 
-io.on("connection", socket => {
+io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  socket.on("join", userId => {
-    onlineUsers.set(userId, socket.id);
+  // When user joins
+  socket.on("join", (userId) => {
     socket.userId = userId;
+    onlineUsers.set(userId, socket.id);
+
+    console.log("Online:", Array.from(onlineUsers.keys()));
+
+    // Send updated online users to everyone
+    io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 
-  socket.on("sendMessage", async data => {
+  // Send message
+  socket.on("sendMessage", async (data) => {
     const { conversationId, senderId, receiverId, text } = data;
 
     const msg = await Message.create({
@@ -47,16 +55,26 @@ io.on("connection", socket => {
       updatedAt: new Date()
     });
 
+    // Send to sender
     socket.emit("newMessage", msg);
 
+    // Send to receiver if online
     const receiverSocket = onlineUsers.get(receiverId);
     if (receiverSocket) {
       io.to(receiverSocket).emit("newMessage", msg);
     }
   });
 
+  // When user disconnects
   socket.on("disconnect", () => {
-    if (socket.userId) onlineUsers.delete(socket.userId);
+    if (socket.userId) {
+      onlineUsers.delete(socket.userId);
+
+      console.log("User offline:", socket.userId);
+
+      // Broadcast updated online list
+      io.emit("onlineUsers", Array.from(onlineUsers.keys()));
+    }
   });
 });
 
