@@ -22,24 +22,15 @@ const io = new Server(server, {
   }
 });
 
-// userId -> socketId
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
-  // When user joins
   socket.on("join", (userId) => {
     socket.userId = userId;
     onlineUsers.set(userId, socket.id);
-
-    console.log("Online:", Array.from(onlineUsers.keys()));
-
-    // Send updated online users to everyone
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 
-  // Send message
   socket.on("sendMessage", async (data) => {
     const { conversationId, senderId, receiverId, text } = data;
 
@@ -55,24 +46,17 @@ io.on("connection", (socket) => {
       updatedAt: new Date()
     });
 
-    // Send to sender
     socket.emit("newMessage", msg);
 
-    // Send to receiver if online
     const receiverSocket = onlineUsers.get(receiverId);
     if (receiverSocket) {
       io.to(receiverSocket).emit("newMessage", msg);
     }
   });
 
-  // When user disconnects
   socket.on("disconnect", () => {
     if (socket.userId) {
       onlineUsers.delete(socket.userId);
-
-      console.log("User offline:", socket.userId);
-
-      // Broadcast updated online list
       io.emit("onlineUsers", Array.from(onlineUsers.keys()));
     }
   });
@@ -95,6 +79,17 @@ app.use("/uploads", express.static(UPLOADS_PATH));
 
 mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/pyrexxbook")
   .then(() => console.log("MongoDB connected"));
+
+/* ================= MULTER ================= */
+
+const storage = multer.diskStorage({
+  destination: UPLOADS_PATH,
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
 
 /* ================= MODELS ================= */
 
@@ -122,13 +117,20 @@ const Post = mongoose.model("Post", new mongoose.Schema({
   comments: [{ userId: String, text: String, time: String }]
 }));
 
-const Story = mongoose.model("Story", new mongoose.Schema({
+/* ============ STORIES (24H AUTO DELETE) ============ */
+
+const StorySchema = new mongoose.Schema({
   userId: String,
   name: String,
   avatar: String,
   image: String,
   createdAt: { type: Date, default: Date.now }
-}));
+});
+
+StorySchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+const Story = mongoose.model("Story", StorySchema);
+
+/* =============================================== */
 
 const Conversation = mongoose.model("Conversation", new mongoose.Schema({
   members: [String],
@@ -196,6 +198,26 @@ app.post("/api/posts", async (req, res) => {
   res.json(post);
 });
 
+/* ================= STORIES ================= */
+
+app.post("/api/stories", upload.single("image"), async (req, res) => {
+  const user = await User.findById(req.body.userId);
+
+  const story = await Story.create({
+    userId: user._id,
+    name: user.name,
+    avatar: user.avatar,
+    image: "/uploads/" + req.file.filename
+  });
+
+  res.json(story);
+});
+
+app.get("/api/stories", async (req, res) => {
+  const stories = await Story.find().sort({ createdAt: -1 });
+  res.json(stories);
+});
+
 /* ================= MESSENGER ================= */
 
 app.post("/api/conversations", async (req, res) => {
@@ -203,20 +225,27 @@ app.post("/api/conversations", async (req, res) => {
     members: { $all: [req.body.senderId, req.body.receiverId] }
   });
 
-  if (!convo)
+  if (!convo) {
     convo = await Conversation.create({
       members: [req.body.senderId, req.body.receiverId]
     });
+  }
 
   res.json(convo);
 });
 
 app.get("/api/conversations/:userId", async (req, res) => {
-  res.json(await Conversation.find({ members: req.params.userId }));
+  const convos = await Conversation.find({
+    members: req.params.userId
+  });
+  res.json(convos);
 });
 
 app.get("/api/messages/:conversationId", async (req, res) => {
-  res.json(await Message.find({ conversationId: req.params.conversationId }));
+  const messages = await Message.find({
+    conversationId: req.params.conversationId
+  });
+  res.json(messages);
 });
 
 /* ================= START ================= */
