@@ -21,7 +21,11 @@
   height: 42px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.85);
+
+  /* Safari & iOS support */
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
+
   border: none;
   color: #333;
   font-size: 22px;
@@ -77,6 +81,7 @@
   width: 100%;
   height: 50%;
   background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  z-index: 1;
 }
 
 /* Name text */
@@ -110,3 +115,5 @@
   color: #111;
   position: static;
 }
+
+/* 👁 View count *
