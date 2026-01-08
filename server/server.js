@@ -3,7 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 const app = express();
 app.use(cors());
@@ -85,8 +85,10 @@ const upload = multer({ storage });
 app.post("/api/auth/register", async (req, res) => {
   try {
     let { name, email, password } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ message: "All fields required" });
+
+    if (!name || !email || !password) {
+      return res.json({ success: false, message: "All fields required" });
+    }
 
     email = email.trim().toLowerCase();
     const username = name.toLowerCase().replace(/\s+/g, "");
@@ -94,8 +96,10 @@ app.post("/api/auth/register", async (req, res) => {
     const exists = await User.findOne({
       email: new RegExp("^" + email + "$", "i")
     });
-    if (exists)
-      return res.status(400).json({ message: "User already exists" });
+
+    if (exists) {
+      return res.json({ success: false, message: "User already exists" });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -112,10 +116,10 @@ app.post("/api/auth/register", async (req, res) => {
       following: []
     });
 
-    res.json({ user });
+    res.json({ success: true, user });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: "Registration failed" });
+    console.error("REGISTER ERROR:", e);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -131,15 +135,17 @@ app.post("/api/auth/login", async (req, res) => {
       ]
     });
 
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    if (!user)
+      return res.json({ success: false, message: "Invalid credentials" });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+    if (!match)
+      return res.json({ success: false, message: "Invalid credentials" });
 
-    res.json({ user });
+    res.json({ success: true, user });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: "Login failed" });
+    console.error("LOGIN ERROR:", e);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -157,7 +163,8 @@ app.post("/api/posts", async (req, res) => {
     const user = await User.findOne({
       email: new RegExp("^" + email + "$", "i")
     });
-    if (!user) return res.status(400).json({ message: "User not found" });
+
+    if (!user) return res.json({ success: false, message: "User not found" });
 
     const post = await Post.create({
       userId: user._id.toString(),
