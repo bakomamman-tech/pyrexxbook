@@ -4,163 +4,155 @@ const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
 const bcrypt = require("bcryptjs");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+
+/* ================= SOCKET.IO ================= */
+
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "https://pyrexxbook-kurah.onrender.com"
+    ],
+    credentials: true
+  }
+});
+
+const onlineUsers = new Map();
+
+io.on("connection", socket => {
+  console.log("User connected:", socket.id);
+
+  socket.on("join", userId => {
+    onlineUsers.set(userId, socket.id);
+    socket.userId = userId;
+  });
+
+  socket.on("sendMessage", async data => {
+    const { conversationId, senderId, receiverId, text } = data;
+
+    const msg = await Message.create({
+      conversationId,
+      senderId,
+      text,
+      time: new Date().toLocaleString()
+    });
+
+    await Conversation.findByIdAndUpdate(conversationId, {
+      lastMessage: text,
+      updatedAt: new Date()
+    });
+
+    socket.emit("newMessage", msg);
+
+    const receiverSocket = onlineUsers.get(receiverId);
+    if (receiverSocket) {
+      io.to(receiverSocket).emit("newMessage", msg);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.userId) onlineUsers.delete(socket.userId);
+  });
+});
 
 /* ================= CORS ================= */
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "https://pyrexxbook-kurah.onrender.com",
-      "https://pyrexxbook-kurah-backend.onrender.com"
-    ],
-    credentials: true
-  })
-);
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://pyrexxbook-kurah.onrender.com"
+  ],
+  credentials: true
+}));
 
 app.use(express.json());
-
-/* ================= PATHS ================= */
 
 const UPLOADS_PATH = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(UPLOADS_PATH));
 
-/* ================= MONGODB ================= */
-
-mongoose
-  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/pyrexxbook")
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.error("MongoDB error:", err));
+mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/pyrexxbook")
+  .then(() => console.log("MongoDB connected"));
 
 /* ================= MODELS ================= */
 
-const User = mongoose.model(
-  "User",
-  new mongoose.Schema({
-    name: String,
-    username: String,
-    email: String,
-    password: String,
-    avatar: String,
-    cover: String,
-    bio: String,
-    joined: String,
-    followers: [String],
-    following: [String]
-  })
-);
+const User = mongoose.model("User", new mongoose.Schema({
+  name: String,
+  username: String,
+  email: String,
+  password: String,
+  avatar: String,
+  cover: String,
+  bio: String,
+  joined: String,
+  followers: [String],
+  following: [String]
+}));
 
-const Post = mongoose.model(
-  "Post",
-  new mongoose.Schema({
-    userId: String,
-    name: String,
-    username: String,
-    avatar: String,
-    text: String,
-    image: String,
-    time: String,
-    likes: [String],
-    comments: [{ userId: String, text: String, time: String }]
-  })
-);
+const Post = mongoose.model("Post", new mongoose.Schema({
+  userId: String,
+  name: String,
+  username: String,
+  avatar: String,
+  text: String,
+  time: String,
+  likes: [String],
+  comments: [{ userId: String, text: String, time: String }]
+}));
 
-const Story = mongoose.model(
-  "Story",
-  new mongoose.Schema({
-    userId: String,
-    name: String,
-    avatar: String,
-    image: String,
-    createdAt: { type: Date, default: Date.now }
-  })
-);
+const Story = mongoose.model("Story", new mongoose.Schema({
+  userId: String,
+  name: String,
+  avatar: String,
+  image: String,
+  createdAt: { type: Date, default: Date.now }
+}));
 
-const Conversation = mongoose.model(
-  "Conversation",
-  new mongoose.Schema({
-    members: [String],
-    lastMessage: String,
-    updatedAt: { type: Date, default: Date.now }
-  })
-);
+const Conversation = mongoose.model("Conversation", new mongoose.Schema({
+  members: [String],
+  lastMessage: String,
+  updatedAt: { type: Date, default: Date.now }
+}));
 
-const Message = mongoose.model(
-  "Message",
-  new mongoose.Schema({
-    conversationId: String,
-    senderId: String,
-    text: String,
-    time: String
-  })
-);
-
-/* ================= MULTER ================= */
-
-const storage = multer.diskStorage({
-  destination: UPLOADS_PATH,
-  filename: (req, file, cb) =>
-    cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
+const Message = mongoose.model("Message", new mongoose.Schema({
+  conversationId: String,
+  senderId: String,
+  text: String,
+  time: String
+}));
 
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", async (req, res) => {
-  try {
-    let { name, email, password } = req.body;
-    email = email.trim().toLowerCase();
+  const { name, email, password } = req.body;
+  const hashed = await bcrypt.hash(password, 10);
+  const username = name.toLowerCase().replace(/\s+/g, "");
 
-    if (!name || !email || !password)
-      return res.status(400).json({ message: "All fields required" });
+  const user = await User.create({
+    name,
+    username,
+    email,
+    password: hashed,
+    avatar: "/uploads/default.png",
+    cover: "/uploads/cover-default.jpg",
+    joined: new Date().toISOString().split("T")[0],
+    followers: [],
+    following: []
+  });
 
-    if (await User.findOne({ email }))
-      return res.status(400).json({ message: "Email already registered" });
-
-    const hashed = await bcrypt.hash(password, 10);
-    const username = name.toLowerCase().replace(/\s+/g, "");
-
-    const user = await User.create({
-      name,
-      username,
-      email,
-      password: hashed,
-      avatar: "/uploads/default.png",
-      cover: "/uploads/cover-default.jpg",
-      bio: "",
-      joined: new Date().toISOString().split("T")[0],
-      followers: [],
-      following: []
-    });
-
-    res.json({ user });
-  } catch {
-    res.status(500).json({ message: "Server error" });
-  }
+  res.json({ user });
 });
 
 app.post("/api/auth/login", async (req, res) => {
-  try {
-    let { email, password } = req.body;
-    email = email.trim().toLowerCase();
+  const user = await User.findOne({ email: req.body.email });
+  if (!user || !(await bcrypt.compare(req.body.password, user.password)))
+    return res.status(401).json({ message: "Invalid credentials" });
 
-    const user = await User.findOne({
-      $or: [{ email }, { username: email }]
-    });
-
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
-
-    if (!(await bcrypt.compare(password, user.password)))
-      return res.status(401).json({ message: "Invalid credentials" });
-
-    res.json({ user });
-  } catch {
-    res.status(500).json({ message: "Server error" });
-  }
+  res.json({ user });
 });
 
 /* ================= POSTS ================= */
@@ -170,93 +162,20 @@ app.get("/api/posts", async (req, res) => {
 });
 
 app.post("/api/posts", async (req, res) => {
-  try {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).json({ message: "User not found" });
+  const user = await User.findOne({ email: req.body.email });
 
-    res.json(
-      await Post.create({
-        userId: user._id.toString(),
-        name: user.name,
-        username: user.username,
-        avatar: user.avatar,
-        text: req.body.text,
-        time: new Date().toLocaleString(),
-        likes: [],
-        comments: []
-      })
-    );
-  } catch {
-    res.status(500).json({ message: "Post failed" });
-  }
-});
-
-/* ❤️ LIKE */
-
-app.post("/api/posts/like/:postId", async (req, res) => {
-  const post = await Post.findById(req.params.postId);
-  if (!post) return res.status(404).json({ message: "Post not found" });
-
-  const i = post.likes.indexOf(req.body.userId);
-  i === -1 ? post.likes.push(req.body.userId) : post.likes.splice(i, 1);
-
-  await post.save();
-  res.json(post);
-});
-
-/* 💬 COMMENT */
-
-app.post("/api/posts/comment/:postId", async (req, res) => {
-  const post = await Post.findById(req.params.postId);
-  if (!post) return res.status(404).json({ message: "Post not found" });
-
-  post.comments.push({
-    userId: req.body.userId,
+  const post = await Post.create({
+    userId: user._id,
+    name: user.name,
+    username: user.username,
+    avatar: user.avatar,
     text: req.body.text,
-    time: new Date().toLocaleString()
+    time: new Date().toLocaleString(),
+    likes: [],
+    comments: []
   });
 
-  await post.save();
   res.json(post);
-});
-
-/* ================= STORIES ================= */
-
-app.post("/api/stories/upload", upload.single("image"), async (req, res) => {
-  try {
-    const user = await User.findById(req.body.userId);
-    if (!user) return res.status(400).json({ message: "User not found" });
-
-    res.json(
-      await Story.create({
-        userId: user._id.toString(),
-        name: user.name,
-        avatar: user.avatar,
-        image: "/uploads/" + req.file.filename
-      })
-    );
-  } catch {
-    res.status(500).json({ message: "Story upload failed" });
-  }
-});
-
-app.get("/api/stories/:userId", async (req, res) => {
-  try {
-    const user = await User.findById(req.params.userId);
-    if (!user) return res.json([]);
-
-    const ids = [user._id.toString(), ...user.following];
-    const yesterday = new Date(Date.now() - 86400000);
-
-    res.json(
-      await Story.find({
-        userId: { $in: ids },
-        createdAt: { $gte: yesterday }
-      }).sort({ createdAt: -1 })
-    );
-  } catch {
-    res.json([]);
-  }
 });
 
 /* ================= MESSENGER ================= */
@@ -268,43 +187,22 @@ app.post("/api/conversations", async (req, res) => {
 
   if (!convo)
     convo = await Conversation.create({
-      members: [req.body.senderId, req.body.receiverId],
-      lastMessage: ""
+      members: [req.body.senderId, req.body.receiverId]
     });
 
   res.json(convo);
 });
 
 app.get("/api/conversations/:userId", async (req, res) => {
-  res.json(
-    await Conversation.find({ members: req.params.userId }).sort({
-      updatedAt: -1
-    })
-  );
+  res.json(await Conversation.find({ members: req.params.userId }));
 });
 
 app.get("/api/messages/:conversationId", async (req, res) => {
   res.json(await Message.find({ conversationId: req.params.conversationId }));
 });
 
-app.post("/api/messages", async (req, res) => {
-  const msg = await Message.create({
-    conversationId: req.body.conversationId,
-    senderId: req.body.senderId,
-    text: req.body.text,
-    time: new Date().toLocaleString()
-  });
+/* ================= START ================= */
 
-  await Conversation.findByIdAndUpdate(req.body.conversationId, {
-    lastMessage: req.body.text,
-    updatedAt: new Date()
-  });
-
-  res.json(msg);
+server.listen(process.env.PORT || 10000, () => {
+  console.log("🔥 PyrexxBook REAL-TIME server running");
 });
-
-/* ================= SERVER ================= */
-
-app.listen(process.env.PORT || 10000, () =>
-  console.log("Server running on port 10000")
-);
