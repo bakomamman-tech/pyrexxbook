@@ -132,7 +132,6 @@ app.post("/api/auth/register", async (req, res) => {
 
     res.json({ user });
   } catch (e) {
-    console.error("REGISTER ERROR:", e);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -146,18 +145,13 @@ app.post("/api/auth/login", async (req, res) => {
       $or: [{ email }, { username: email }]
     });
 
-    if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+    if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
     res.json({ user });
   } catch (e) {
-    console.error("LOGIN ERROR:", e);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -190,6 +184,30 @@ app.post("/api/posts", async (req, res) => {
     res.json(post);
   } catch (e) {
     res.status(500).json({ message: "Post failed" });
+  }
+});
+
+/* ❤️ LIKE / UNLIKE */
+
+app.post("/api/posts/like/:postId", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const post = await Post.findById(req.params.postId);
+
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    const index = post.likes.indexOf(userId);
+
+    if (index === -1) {
+      post.likes.push(userId); // Like
+    } else {
+      post.likes.splice(index, 1); // Unlike
+    }
+
+    await post.save();
+    res.json(post);
+  } catch (e) {
+    res.status(500).json({ message: "Like failed" });
   }
 });
 
