@@ -46,6 +46,34 @@ body {
   border-radius: 10px;
   border: 1px solid #ddd;
   font-size: 16px;
+  box-sizing: border-box;
+}
+
+/* Password wrapper for eye */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Add space for the eye */
+.password-wrapper input {
+  padding-right: 45px;
+}
+
+/* Eye icon */
+.password-eye {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 18px;
+  user-select: none;
+  opacity: 0.7;
+}
+
+.password-eye:hover {
+  opacity: 1;
 }
 
 /* Button */
@@ -68,19 +96,7 @@ body {
 /* Toggle text */
 .login-box .toggle {
   margin-top: 18px;
-  font-size: 17px; /* ~3px bigger */
+  font-size: 17px;
   color: #0066ff;
   cursor: pointer;
-}
-.login-page {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #f5f6fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
 }

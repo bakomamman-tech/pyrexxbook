@@ -7,15 +7,28 @@ export default function Login({ setUser }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const submit = async () => {
     setError("");
+    setLoading(true);
 
     try {
+      // Email validation only for registration
+      if (isRegister) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          setError("Please enter a valid email address");
+          setLoading(false);
+          return;
+        }
+      }
+
       const url = isRegister
-        ? "/api/auth/register"
-        : "/api/auth/login";
+        ? `${API_BASE}/api/auth/register`
+        : `${API_BASE}/api/auth/login`;
 
       const body = isRegister
         ? { name, email, password }
@@ -29,15 +42,22 @@ export default function Login({ setUser }) {
 
       const data = await res.json();
 
+      // ✅ Use HTTP status instead of data.success
       if (!res.ok) {
-        setError(data.message || "Failed");
+        setError(data.message || "Login failed");
+        setLoading(false);
         return;
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user));
-      setUser(data.user);
-    } catch {
-      setError("Server error");
+      // ✅ Save user and login
+      localStorage.setItem("user", JSON.stringify(data));
+      setUser(data);
+
+    } catch (err) {
+      console.error(err);
+      setError("Unable to reach server");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,28 +75,36 @@ export default function Login({ setUser }) {
         )}
 
         <input
-          placeholder="Email or Username"
+          type="email"
+          placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
+          required
         />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
+        <div className="password-wrapper">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
 
-        <button onClick={submit}>
-          {isRegister ? "Create Account" : "Login"}
+          <span
+            className="password-eye"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? "🙈" : "👁️"}
+          </span>
+        </div>
+
+        <button onClick={submit} disabled={loading}>
+          {loading ? "Please wait..." : isRegister ? "Create Account" : "Login"}
         </button>
 
         {error && <p style={{ color: "red" }}>{error}</p>}
 
-        <p
-          className="toggle"
-          onClick={() => setIsRegister(!isRegister)}
-        >
+        <p className="toggle" onClick={() => setIsRegister(!isRegister)}>
           {isRegister
             ? "Already have an account? Login"
             : "Don't have an account? Create one"}
