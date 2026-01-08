@@ -1,39 +1,88 @@
 import { useState } from "react";
+import API_BASE from "../utils/api";
 import "./ProfileCard.css";
 
 function ProfileCard({ user }) {
   const [tab, setTab] = useState("posts");
+  const [profile, setProfile] = useState(user);
+  const [logged, setLogged] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch {
+      return null;
+    }
+  });
 
-  // Prevent crash while data is loading
-  if (!user) {
+  if (!profile || !logged) {
     return <div style={{ padding: 20 }}>Loading profile…</div>;
   }
 
+  const isFollowing = logged.following?.includes(profile._id);
+  const isFriend =
+    isFollowing && profile.followers?.includes(logged._id);
+
+  const follow = async () => {
+    const res = await fetch(
+      `${API_BASE}/api/users/follow/${profile._id}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: logged._id })
+      }
+    );
+
+    const data = await res.json();
+
+    // Update viewed profile
+    setProfile(prev => ({
+      ...prev,
+      followers: data.followers
+    }));
+
+    // Update logged-in user safely
+    const updatedLogged = {
+      ...logged,
+      following: data.following
+    };
+
+    setLogged(updatedLogged);
+    localStorage.setItem("user", JSON.stringify(updatedLogged));
+  };
+
   return (
     <div className="profile-page">
-
-      {/* Cover + Profile */}
       <div className="profile-header">
         <img
           className="cover"
-          src={`https://pyrexxbook-backend.onrender.com${user?.cover || "/uploads/cover-default.jpg"}`}
+          src={`${API_BASE}${profile.cover || "/uploads/cover-default.jpg"}`}
           alt="cover"
         />
 
         <div className="profile-info">
           <img
             className="avatar"
-            src={`https://pyrexxbook-backend.onrender.com${user?.avatar || "/uploads/default.png"}`}
+            src={`${API_BASE}${profile.avatar || "/uploads/default.png"}`}
             alt="avatar"
           />
+
           <div>
-            <h2>{user?.name || "User"}</h2>
-            <p>@{user?.username || ""}</p>
+            <h2>{profile.name}</h2>
+            <p>@{profile.username}</p>
+            <p>{profile.followers?.length || 0} followers</p>
           </div>
+
+          {logged._id !== profile._id && (
+            <button className="follow-btn" onClick={follow}>
+              {isFriend
+                ? "Friends"
+                : isFollowing
+                ? "Following"
+                : "Follow"}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="profile-tabs">
         <span onClick={() => setTab("posts")} className={tab === "posts" ? "active" : ""}>Posts</span>
         <span onClick={() => setTab("about")} className={tab === "about" ? "active" : ""}>About</span>
@@ -41,14 +90,14 @@ function ProfileCard({ user }) {
         <span onClick={() => setTab("followers")} className={tab === "followers" ? "active" : ""}>Followers</span>
       </div>
 
-      {/* Content */}
       <div className="profile-content">
         {tab === "posts" && <p>No posts yet</p>}
-        {tab === "about" && <p>{user?.bio || "No bio yet"}</p>}
+        {tab === "about" && <p>{profile.bio || "No bio yet"}</p>}
         {tab === "photos" && <p>Photos will appear here</p>}
-        {tab === "followers" && <p>{user?.friends?.length || 0} followers</p>}
+        {tab === "followers" && (
+          <p>{profile.followers?.length || 0} followers</p>
+        )}
       </div>
-
     </div>
   );
 }
