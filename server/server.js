@@ -6,15 +6,26 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 
 const app = express();
-app.use(cors());
+
+/* ================= CORS ================= */
+
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "https://pyrexxbook-kurah.onrender.com"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 /* ================= PATHS ================= */
 
 const UPLOADS_PATH = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(UPLOADS_PATH));
-
-console.log("Uploads:", UPLOADS_PATH);
 
 /* ================= MONGODB ================= */
 
@@ -87,25 +98,21 @@ app.post("/api/auth/register", async (req, res) => {
     let { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.json({ success: false, message: "All fields required" });
+      return res.status(400).json({ message: "All fields required" });
     }
 
     email = email.trim().toLowerCase();
 
-    // Enforce real email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.json({ success: false, message: "Enter a valid email address" });
+      return res.status(400).json({ message: "Enter a valid email address" });
     }
 
     const username = name.toLowerCase().replace(/\s+/g, "");
 
-    const exists = await User.findOne({
-      email: new RegExp("^" + email + "$", "i")
-    });
-
+    const exists = await User.findOne({ email });
     if (exists) {
-      return res.json({ success: false, message: "Email already registered" });
+      return res.status(400).json({ message: "Email already registered" });
     }
 
     const hashed = await bcrypt.hash(password, 10);
@@ -123,10 +130,10 @@ app.post("/api/auth/register", async (req, res) => {
       following: []
     });
 
-    res.json({ success: true, user });
+    res.json({ user });
   } catch (e) {
     console.error("REGISTER ERROR:", e);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -136,23 +143,22 @@ app.post("/api/auth/login", async (req, res) => {
     email = email.trim().toLowerCase();
 
     const user = await User.findOne({
-      $or: [
-        { email: new RegExp("^" + email + "$", "i") },
-        { username: new RegExp("^" + email + "$", "i") }
-      ]
+      $or: [{ email }, { username: email }]
     });
 
-    if (!user)
-      return res.json({ success: false, message: "Invalid credentials" });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match)
-      return res.json({ success: false, message: "Invalid credentials" });
+    if (!match) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    res.json({ success: true, user });
+    res.json({ user });
   } catch (e) {
     console.error("LOGIN ERROR:", e);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -167,11 +173,8 @@ app.post("/api/posts", async (req, res) => {
   try {
     const { email, text } = req.body;
 
-    const user = await User.findOne({
-      email: new RegExp("^" + email + "$", "i")
-    });
-
-    if (!user) return res.json({ success: false, message: "User not found" });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User not found" });
 
     const post = await Post.create({
       userId: user._id.toString(),
