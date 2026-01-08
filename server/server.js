@@ -91,6 +91,13 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     email = email.trim().toLowerCase();
+
+    // Enforce real email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.json({ success: false, message: "Enter a valid email address" });
+    }
+
     const username = name.toLowerCase().replace(/\s+/g, "");
 
     const exists = await User.findOne({
@@ -98,7 +105,7 @@ app.post("/api/auth/register", async (req, res) => {
     });
 
     if (exists) {
-      return res.json({ success: false, message: "User already exists" });
+      return res.json({ success: false, message: "Email already registered" });
     }
 
     const hashed = await bcrypt.hash(password, 10);
