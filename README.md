@@ -1,7 +1,7 @@
 # PyrexxBook  
 A full-stack social media platform with real-time chat, stories, and secure authentication.
 
-🔗 **Live Backend:** https://pyrexxbook-kurahz.onrender.com  
+🔗 Live App: https://pyrexxbook-kurahz.onrender.com
 
 ---
 
