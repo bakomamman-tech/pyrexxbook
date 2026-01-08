@@ -131,7 +131,7 @@ app.post("/api/auth/register", async (req, res) => {
     });
 
     res.json({ user });
-  } catch (e) {
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -151,7 +151,7 @@ app.post("/api/auth/login", async (req, res) => {
     if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
     res.json({ user });
-  } catch (e) {
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -182,7 +182,7 @@ app.post("/api/posts", async (req, res) => {
     });
 
     res.json(post);
-  } catch (e) {
+  } catch {
     res.status(500).json({ message: "Post failed" });
   }
 });
@@ -197,17 +197,38 @@ app.post("/api/posts/like/:postId", async (req, res) => {
     if (!post) return res.status(404).json({ message: "Post not found" });
 
     const index = post.likes.indexOf(userId);
-
-    if (index === -1) {
-      post.likes.push(userId); // Like
-    } else {
-      post.likes.splice(index, 1); // Unlike
-    }
+    if (index === -1) post.likes.push(userId);
+    else post.likes.splice(index, 1);
 
     await post.save();
     res.json(post);
-  } catch (e) {
+  } catch {
     res.status(500).json({ message: "Like failed" });
+  }
+});
+
+/* 💬 ADD COMMENT */
+
+app.post("/api/posts/comment/:postId", async (req, res) => {
+  try {
+    const { userId, text } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    post.comments.push({
+      userId,
+      text,
+      time: new Date().toLocaleString()
+    });
+
+    await post.save();
+    res.json(post);
+  } catch {
+    res.status(500).json({ message: "Comment failed" });
   }
 });
 
