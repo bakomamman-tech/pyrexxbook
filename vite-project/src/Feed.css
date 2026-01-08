@@ -110,3 +110,17 @@ body {
   font-weight: bold;
   cursor: pointer;
 }
+
+.messenger-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #1877f2;
+  color: white;
+  font-size: 26px;
+  padding: 14px 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 1000;
+}

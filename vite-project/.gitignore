@@ -7,9 +7,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
-dist
-dist-ssr
+
+# ❌ Do NOT ignore frontend build anymore
+# dist
+# dist-ssr
+# vite-project/dist
+
+# Local environment files
 *.local
 
 # Editor directories and files

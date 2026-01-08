@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ProfileCard from "./components/ProfileCard";
 import StoryBar from "./components/StoryBar";
 import ImageModal from "./components/ImageModal";
+import Messenger from "./components/Messenger";
 import API_BASE from "./utils/api";
 import "./Feed.css";
 
@@ -10,6 +11,8 @@ export default function Feed() {
   const [text, setText] = useState("");
   const [commentText, setCommentText] = useState({});
   const [selectedImage, setSelectedImage] = useState(null);
+  const [refresh, setRefresh] = useState(0);
+  const [showMessenger, setShowMessenger] = useState(false);
 
   const user = (() => {
     try {
@@ -19,31 +22,25 @@ export default function Feed() {
     }
   })();
 
-  // Always load posts
+  const avatarUrl = (name, avatar) => {
+    if (!avatar) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        name
+      )}&background=C3005E&color=fff`;
+    }
+    if (avatar.startsWith("http")) return avatar;
+    return `${API_BASE}${avatar}`;
+  };
+
+  // Always sync feed
   useEffect(() => {
     if (!user) return;
 
     fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setPosts(data);
-        else setPosts([]);
-      })
+      .then(data => setPosts(data || []))
       .catch(console.error);
-  }, [user]);
-
-  const reload = async () => {
-    const res = await fetch(`${API_BASE}/api/posts`);
-    const data = await res.json();
-    setPosts(Array.isArray(data) ? data : []);
-  };
-
-  const avatarUrl = (name, avatar) => {
-    if (!avatar)
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=C3005E&color=fff`;
-    if (avatar.startsWith("http")) return avatar;
-    return `${API_BASE}${avatar}`;
-  };
+  }, [user, refresh]);
 
   const createPost = async () => {
     if (!text.trim()) return;
@@ -55,7 +52,7 @@ export default function Feed() {
     });
 
     setText("");
-    reload();
+    setRefresh(r => r + 1);
   };
 
   const toggleLike = async postId => {
@@ -65,7 +62,7 @@ export default function Feed() {
       body: JSON.stringify({ userId: user._id })
     });
 
-    reload();
+    setRefresh(r => r + 1);
   };
 
   const addComment = async postId => {
@@ -81,13 +78,27 @@ export default function Feed() {
     });
 
     setCommentText({ ...commentText, [postId]: "" });
-    reload();
+    setRefresh(r => r + 1);
   };
 
   if (!user) return <div style={{ padding: 20 }}>Please log in</div>;
 
   return (
     <div className="feed-container">
+
+      {/* Messenger floating button */}
+      <div
+        className="messenger-fab"
+        onClick={() => setShowMessenger(true)}
+      >
+        💬
+      </div>
+
+      {/* Messenger popup */}
+      {showMessenger && (
+        <Messenger user={user} onClose={() => setShowMessenger(false)} />
+      )}
+
       <ProfileCard user={user} />
       <StoryBar user={user} />
 
@@ -102,8 +113,8 @@ export default function Feed() {
       </div>
 
       {posts.map(post => {
-        const likes = Array.isArray(post.likes) ? post.likes.filter(Boolean) : [];
-        const comments = Array.isArray(post.comments) ? post.comments : [];
+        const likes = post.likes || [];
+        const comments = post.comments || [];
 
         return (
           <div className="post" key={post._id}>
@@ -126,8 +137,7 @@ export default function Feed() {
             <div className="comments">
               {comments.map((c, i) => (
                 <div key={i} className="comment">
-                  <strong>{c.userId === user._id ? "You" : "User"}:</strong>{" "}
-                  {c.text}
+                  <strong>{c.userId === user._id ? "You" : "User"}:</strong> {c.text}
                 </div>
               ))}
 
@@ -136,7 +146,10 @@ export default function Feed() {
                   placeholder="Write a comment..."
                   value={commentText[post._id] || ""}
                   onChange={e =>
-                    setCommentText({ ...commentText, [post._id]: e.target.value })
+                    setCommentText({
+                      ...commentText,
+                      [post._id]: e.target.value
+                    })
                   }
                 />
                 <button onClick={() => addComment(post._id)}>Post</button>
@@ -147,7 +160,10 @@ export default function Feed() {
       })}
 
       {selectedImage && (
-        <ImageModal src={selectedImage} onClose={() => setSelectedImage(null)} />
+        <ImageModal
+          src={selectedImage}
+          onClose={() => setSelectedImage(null)}
+        />
       )}
     </div>
   );
