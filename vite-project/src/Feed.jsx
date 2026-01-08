@@ -10,6 +10,7 @@ export default function Feed() {
   const [text, setText] = useState("");
   const [commentText, setCommentText] = useState({});
   const [selectedImage, setSelectedImage] = useState(null);
+  const [refresh, setRefresh] = useState(0);
 
   const user = (() => {
     try {
@@ -29,7 +30,7 @@ export default function Feed() {
     return `${API_BASE}${avatar}`;
   };
 
-  // ✅ Load posts when component mounts OR user changes
+  // Always keep feed in sync
   useEffect(() => {
     if (!user) return;
 
@@ -37,12 +38,7 @@ export default function Feed() {
       .then(res => res.json())
       .then(data => setPosts(data || []))
       .catch(console.error);
-  }, [user]);
-
-  const reloadPosts = async () => {
-    const res = await fetch(`${API_BASE}/api/posts`);
-    setPosts(await res.json());
-  };
+  }, [user, refresh]);
 
   const createPost = async () => {
     if (!text.trim()) return;
@@ -57,24 +53,23 @@ export default function Feed() {
     });
 
     setText("");
-    reloadPosts();
+    setRefresh(r => r + 1);
   };
 
   const toggleLike = async postId => {
-    const res = await fetch(`${API_BASE}/api/posts/like/${postId}`, {
+    await fetch(`${API_BASE}/api/posts/like/${postId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user._id })
     });
 
-    const updated = await res.json();
-    setPosts(posts.map(p => (p._id === updated._id ? updated : p)));
+    setRefresh(r => r + 1);
   };
 
   const addComment = async postId => {
     if (!commentText[postId]) return;
 
-    const res = await fetch(`${API_BASE}/api/posts/comment/${postId}`, {
+    await fetch(`${API_BASE}/api/posts/comment/${postId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -83,9 +78,8 @@ export default function Feed() {
       })
     });
 
-    const updated = await res.json();
-    setPosts(posts.map(p => (p._id === updated._id ? updated : p)));
     setCommentText({ ...commentText, [postId]: "" });
+    setRefresh(r => r + 1);
   };
 
   if (!user) return <div style={{ padding: 20 }}>Please log in</div>;
@@ -120,15 +114,6 @@ export default function Feed() {
             </div>
 
             <div className="post-text">{post.text}</div>
-
-            {post.image && (
-              <img
-                src={`${API_BASE}${post.image}`}
-                className="post-image"
-                onClick={() => setSelectedImage(`${API_BASE}${post.image}`)}
-                alt=""
-              />
-            )}
 
             <div className="post-actions">
               <button onClick={() => toggleLike(post._id)}>
