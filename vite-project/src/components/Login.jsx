@@ -16,7 +16,6 @@ export default function Login({ setUser }) {
     setLoading(true);
 
     try {
-      // Email validation only for registration
       if (isRegister) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
@@ -42,16 +41,18 @@ export default function Login({ setUser }) {
 
       const data = await res.json();
 
-      // ✅ Use HTTP status instead of data.success
       if (!res.ok) {
         setError(data.message || "Login failed");
         setLoading(false);
         return;
       }
 
-      // ✅ Save user and login
-      localStorage.setItem("user", JSON.stringify(data));
-      setUser(data);
+      // ✅ Extract the real user
+      const user = data.user || data;
+
+      // ✅ Save correct user object
+      localStorage.setItem("user", JSON.stringify(user));
+      setUser(user);
 
     } catch (err) {
       console.error(err);
