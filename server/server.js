@@ -1,9 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const multer = require("multer");
 const path = require("path");
-const bcrypt = require("bcrypt");          // 🔥 FIXED
+const bcrypt = require("bcrypt");
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -28,8 +27,6 @@ const io = new Server(server, {
 const onlineUsers = new Map();
 
 io.on("connection", socket => {
-  console.log("Socket connected:", socket.id);
-
   socket.on("join", userId => {
     socket.userId = userId;
     onlineUsers.set(userId, socket.id);
@@ -80,10 +77,7 @@ app.get("/", (req, res) => {
   res.send("PyrexxBook API is running");
 });
 
-/* ================= FILES ================= */
-
-const UPLOADS_PATH = path.join(__dirname, "uploads");
-app.use("/uploads", express.static(UPLOADS_PATH));
+/* ================= DATABASE ================= */
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
@@ -101,7 +95,8 @@ const User = mongoose.model("User", new mongoose.Schema({
   bio: String,
   joined: String,
   followers: [String],
-  following: [String]
+  following: [String],
+  friendRequests: [String]   // 🔥 NEW
 }));
 
 const Post = mongoose.model("Post", new mongoose.Schema({
@@ -134,56 +129,12 @@ app.get("/api/users", async (req, res) => {
   res.json(await User.find().select("-password"));
 });
 
-/* ================= POSTS ================= */
-
-app.get("/api/posts", async (req, res) => {
-  res.json(await Post.find().sort({ _id: -1 }));
-});
-
-app.post("/api/posts", async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
-
-  const post = await Post.create({
-    userId: user._id,
-    name: user.name,
-    username: user.username,
-    avatar: user.avatar,
-    text: req.body.text,
-    time: new Date().toLocaleString(),
-    likes: [],
-    comments: []
-  });
-
-  res.json(post);
-});
-
-app.post("/api/posts/like/:id", async (req, res) => {
-  const post = await Post.findById(req.params.id);
-  if (post.likes.includes(req.body.userId))
-    post.likes = post.likes.filter(i => i !== req.body.userId);
-  else
-    post.likes.push(req.body.userId);
-  await post.save();
-  res.json(post);
-});
-
-app.post("/api/posts/comment/:id", async (req, res) => {
-  const post = await Post.findById(req.params.id);
-  post.comments.push({
-    userId: req.body.userId,
-    text: req.body.text,
-    time: new Date().toLocaleString()
-  });
-  await post.save();
-  res.json(post);
-});
-
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", async (req, res) => {
   const { name, email, password } = req.body;
 
-  const hashed = await bcrypt.hash(password, 10);   // 🔥 DOES NOT HANG
+  const hashed = await bcrypt.hash(password, 10);
 
   const user = await User.create({
     name,
@@ -194,7 +145,8 @@ app.post("/api/auth/register", async (req, res) => {
     cover: "/uploads/cover-default.jpg",
     joined: new Date().toISOString().split("T")[0],
     followers: [],
-    following: []
+    following: [],
+    friendRequests: []
   });
 
   res.json({ user });
@@ -208,13 +160,71 @@ app.post("/api/auth/login", async (req, res) => {
   res.json({ user });
 });
 
-/* ================= MESSENGER ================= */
+/* ================= FRIEND REQUESTS ================= */
+
+app.post("/api/friends/request", async (req, res) => {
+  const { fromId, toId } = req.body;
+
+  const toUser = await User.findById(toId);
+  if (!toUser.friendRequests.includes(fromId)) {
+    toUser.friendRequests.push(fromId);
+    await toUser.save();
+  }
+
+  res.json({ success: true });
+});
+
+app.post("/api/friends/accept", async (req, res) => {
+  const { userId, requesterId } = req.body;
+
+  const user = await User.findById(userId);
+  const requester = await User.findById(requesterId);
+
+  user.friendRequests = user.friendRequests.filter(id => id !== requesterId);
+
+  user.followers.push(requesterId);
+  user.following.push(requesterId);
+
+  requester.followers.push(userId);
+  requester.following.push(userId);
+
+  await user.save();
+  await requester.save();
+
+  res.json({ success: true });
+});
+
+app.post("/api/friends/reject", async (req, res) => {
+  const { userId, requesterId } = req.body;
+  const user = await User.findById(userId);
+
+  user.friendRequests = user.friendRequests.filter(id => id !== requesterId);
+  await user.save();
+
+  res.json({ success: true });
+});
+
+/* ================= MESSENGER (Friends Only) ================= */
 
 app.post("/api/conversations", async (req, res) => {
+  const { senderId, receiverId } = req.body;
+
+  const sender = await User.findById(senderId);
+  const receiver = await User.findById(receiverId);
+
+  const isFriend =
+    sender.following.includes(receiverId) &&
+    receiver.following.includes(senderId);
+
+  if (!isFriend)
+    return res.status(403).json({ message: "Friends only" });
+
   let convo = await Conversation.findOne({
-    members: { $all: [req.body.senderId, req.body.receiverId] }
+    members: { $all: [senderId, receiverId] }
   });
-  if (!convo) convo = await Conversation.create({ members: [req.body.senderId, req.body.receiverId] });
+
+  if (!convo) convo = await Conversation.create({ members: [senderId, receiverId] });
+
   res.json(convo);
 });
 

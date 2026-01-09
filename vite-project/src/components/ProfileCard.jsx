@@ -18,35 +18,90 @@ function ProfileCard({ user }) {
   }
 
   const isFollowing = logged.following?.includes(profile._id);
-  const isFriend =
-    isFollowing && profile.followers?.includes(logged._id);
+  const isFollower = profile.followers?.includes(logged._id);
+  const isFriend = isFollowing && isFollower;
 
-  const follow = async () => {
-    const res = await fetch(
-      `${API_BASE}/api/users/follow/${profile._id}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: logged._id })
-      }
-    );
+  const hasSentRequest = profile.friendRequests?.includes(logged._id);
+  const hasIncomingRequest = logged.friendRequests?.includes(profile._id);
 
-    const data = await res.json();
+  /* ================= ACTIONS ================= */
 
-    // Update viewed profile
+  const sendRequest = async () => {
+    await fetch(`${API_BASE}/friends/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fromId: logged._id,
+        toId: profile._id
+      })
+    });
+
     setProfile(prev => ({
       ...prev,
-      followers: data.followers
+      friendRequests: [...(prev.friendRequests || []), logged._id]
     }));
+  };
 
-    // Update logged-in user safely
+  const acceptRequest = async () => {
+    await fetch(`${API_BASE}/friends/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: logged._id,
+        requesterId: profile._id
+      })
+    });
+
     const updatedLogged = {
       ...logged,
-      following: data.following
+      followers: [...logged.followers, profile._id],
+      following: [...logged.following, profile._id],
+      friendRequests: logged.friendRequests.filter(id => id !== profile._id)
     };
 
     setLogged(updatedLogged);
     localStorage.setItem("user", JSON.stringify(updatedLogged));
+
+    setProfile(prev => ({
+      ...prev,
+      followers: [...prev.followers, logged._id],
+      following: [...(prev.following || []), logged._id]
+    }));
+  };
+
+  const rejectRequest = async () => {
+    await fetch(`${API_BASE}/friends/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: logged._id,
+        requesterId: profile._id
+      })
+    });
+
+    const updatedLogged = {
+      ...logged,
+      friendRequests: logged.friendRequests.filter(id => id !== profile._id)
+    };
+
+    setLogged(updatedLogged);
+    localStorage.setItem("user", JSON.stringify(updatedLogged));
+  };
+
+  /* ================= BUTTON LOGIC ================= */
+
+  const renderButton = () => {
+    if (isFriend) return <button className="follow-btn">Friends</button>;
+    if (hasSentRequest) return <button className="follow-btn">Requested</button>;
+    if (hasIncomingRequest)
+      return (
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="follow-btn" onClick={acceptRequest}>Accept</button>
+          <button className="follow-btn danger" onClick={rejectRequest}>Decline</button>
+        </div>
+      );
+
+    return <button className="follow-btn" onClick={sendRequest}>Add Friend</button>;
   };
 
   return (
@@ -71,15 +126,7 @@ function ProfileCard({ user }) {
             <p>{profile.followers?.length || 0} followers</p>
           </div>
 
-          {logged._id !== profile._id && (
-            <button className="follow-btn" onClick={follow}>
-              {isFriend
-                ? "Friends"
-                : isFollowing
-                ? "Following"
-                : "Follow"}
-            </button>
-          )}
+          {logged._id !== profile._id && renderButton()}
         </div>
       </div>
 
