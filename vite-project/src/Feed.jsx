@@ -22,10 +22,11 @@ export default function Feed() {
     }
   })();
 
+  /* ===== SAFE AVATAR ===== */
   const avatarUrl = (name, avatar) => {
     if (!avatar)
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        name
+        name || "User"
       )}&background=C3005E&color=fff`;
     if (avatar.startsWith("http")) return avatar;
     return `${API_BASE.replace("/api", "")}${avatar}`;
@@ -35,16 +36,10 @@ export default function Feed() {
   useEffect(() => {
     if (!user) return;
 
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/posts`);
-        const data = await res.json();
-        setPosts(data);
-        setLoading(false);
-      } catch (e) {
-        console.error(e);
-      }
-    })();
+    fetch(`${API_BASE}/posts`)
+      .then(r => r.json())
+      .then(setPosts)
+      .finally(() => setLoading(false));
   }, [user]);
 
   const reload = async () => {
@@ -154,12 +149,20 @@ export default function Feed() {
         </div>
       ))}
 
-      {/* ===== FACEBOOK STYLE MESSENGER BUTTON ===== */}
-      <button className="messenger-fab" onClick={() => setShowMessenger(true)}>
+      {/* ===== MESSENGER BUTTON ===== */}
+      <button
+        className="messenger-fab"
+        style={{ zIndex: 2000 }}
+        onClick={() => {
+          console.log("⚡ Messenger open");
+          setShowMessenger(true);
+        }}
+      >
         ⚡
       </button>
 
-      {showMessenger && (
+      {/* ===== FORCE MESSENGER RENDER ===== */}
+      {showMessenger && user && (
         <Messenger user={user} onClose={() => setShowMessenger(false)} />
       )}
 
