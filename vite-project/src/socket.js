@@ -1,16 +1,8 @@
 import { io } from "socket.io-client";
 
-const SOCKET_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:10000"
-    : "https://pyrexxbook-kurah-backend.onrender.com";
-
-const socket = io(SOCKET_URL, {
+const socket = io("https://pyrexxbook-kurah-backend.onrender.com", {
   transports: ["websocket"],
-  withCredentials: true,
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000
+  withCredentials: true
 });
 
 export default socket;
