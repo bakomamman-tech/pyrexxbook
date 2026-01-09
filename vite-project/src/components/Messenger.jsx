@@ -12,57 +12,23 @@ export default function Messenger({ user, onClose }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const bottomRef = useRef();
 
-  // Join socket as this user
+  /* ===== JOIN SOCKET ===== */
   useEffect(() => {
     if (!user?._id) return;
 
     socket.emit("join", user._id);
 
-    socket.on("onlineUsers", users => {
-      setOnlineUsers(users);
+    socket.on("onlineUsers", (list) => {
+      setOnlineUsers(list);
     });
 
-    return () => socket.off("onlineUsers");
-  }, [user]);
-
-  // Load all users
-  useEffect(() => {
-    fetch(`${API_BASE}/api/users`)
-      .then(r => r.json())
-      .then(list => {
-        const map = {};
-        list.forEach(u => (map[u._id] = u));
-        setUsers(map);
-      });
-  }, []);
-
-  // Load conversations
-  useEffect(() => {
-    if (!user?._id) return;
-
-    fetch(`${API_BASE}/api/conversations/${user._id}`)
-      .then(r => r.json())
-      .then(setConversations);
-  }, [user]);
-
-  // Load messages when a chat opens
-  useEffect(() => {
-    if (!active) return;
-
-    fetch(`${API_BASE}/api/messages/${active._id}`)
-      .then(r => r.json())
-      .then(setMessages);
-  }, [active]);
-
-  // Receive real-time messages
-  useEffect(() => {
-    socket.on("newMessage", msg => {
+    socket.on("newMessage", (msg) => {
       if (msg.conversationId === active?._id) {
-        setMessages(prev => [...prev, msg]);
+        setMessages((prev) => [...prev, msg]);
       }
 
-      setConversations(prev =>
-        prev.map(c =>
+      setConversations((prev) =>
+        prev.map((c) =>
           c._id === msg.conversationId
             ? { ...c, lastMessage: msg.text }
             : c
@@ -70,10 +36,42 @@ export default function Messenger({ user, onClose }) {
       );
     });
 
-    return () => socket.off("newMessage");
+    return () => {
+      socket.off("onlineUsers");
+      socket.off("newMessage");
+    };
+  }, [user, active]);
+
+  /* ===== LOAD USERS ===== */
+  useEffect(() => {
+    fetch(`${API_BASE}/api/users`)
+      .then((r) => r.json())
+      .then((list) => {
+        const map = {};
+        list.forEach((u) => (map[u._id] = u));
+        setUsers(map);
+      });
+  }, []);
+
+  /* ===== LOAD CONVERSATIONS ===== */
+  useEffect(() => {
+    if (!user?._id) return;
+
+    fetch(`${API_BASE}/api/conversations/${user._id}`)
+      .then((r) => r.json())
+      .then(setConversations);
+  }, [user]);
+
+  /* ===== LOAD MESSAGES ===== */
+  useEffect(() => {
+    if (!active) return;
+
+    fetch(`${API_BASE}/api/messages/${active._id}`)
+      .then((r) => r.json())
+      .then(setMessages);
   }, [active]);
 
-  // Auto scroll
+  /* ===== AUTO SCROLL ===== */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -81,7 +79,7 @@ export default function Messenger({ user, onClose }) {
   const send = () => {
     if (!text.trim() || !active) return;
 
-    const receiverId = active.members.find(m => m !== user._id);
+    const receiverId = active.members.find((m) => m !== user._id);
 
     socket.emit("sendMessage", {
       conversationId: active._id,
@@ -93,12 +91,12 @@ export default function Messenger({ user, onClose }) {
     setText("");
   };
 
-  const getFriend = convo => {
-    const id = convo.members.find(m => m !== user._id);
+  const getFriend = (convo) => {
+    const id = convo.members.find((m) => m !== user._id);
     return users[id];
   };
 
-  const isOnline = id => onlineUsers.includes(id);
+  const isOnline = (id) => onlineUsers.includes(id);
 
   return (
     <div className="messenger-popup">
@@ -108,9 +106,8 @@ export default function Messenger({ user, onClose }) {
       </div>
 
       <div className="messenger-body">
-        {/* LEFT */}
         <div className="messenger-left">
-          {conversations.map(c => {
+          {conversations.map((c) => {
             const friend = getFriend(c);
             return (
               <div
@@ -127,9 +124,7 @@ export default function Messenger({ user, onClose }) {
                     }
                     className="convo-avatar"
                   />
-                  {isOnline(friend?._id) && (
-                    <span className="online-dot"></span>
-                  )}
+                  {isOnline(friend?._id) && <span className="online-dot" />}
                 </div>
 
                 <div>
@@ -143,7 +138,6 @@ export default function Messenger({ user, onClose }) {
           })}
         </div>
 
-        {/* RIGHT */}
         <div className="messenger-right">
           {active ? (
             <>
@@ -172,8 +166,8 @@ export default function Messenger({ user, onClose }) {
                 <input
                   placeholder="Type a message..."
                   value={text}
-                  onChange={e => setText(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && send()}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && send()}
                 />
                 <button onClick={send}>Send</button>
               </div>
