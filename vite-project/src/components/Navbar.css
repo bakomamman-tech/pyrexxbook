@@ -144,3 +144,24 @@
     gap: 20px;
   }
 }
+
+.avatar-wrap {
+  position: relative;
+}
+
+.online-dot {
+  width: 10px;
+  height: 10px;
+  background: #2cff00;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  border: 2px solid white;
+}
+
+.chat-online {
+  color: #2cff00;
+  font-size: 12px;
+  margin-left: 10px;
+}

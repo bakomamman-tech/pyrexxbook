@@ -13,11 +13,18 @@ export default function Messenger({ user, onClose }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [users, setUsers] = useState({});
+  const [onlineUsers, setOnlineUsers] = useState([]); // 👈 NEW
   const bottomRef = useRef();
 
   // Join socket as this user
   useEffect(() => {
     socket.emit("join", user._id);
+
+    socket.on("onlineUsers", users => {
+      setOnlineUsers(users);
+    });
+
+    return () => socket.off("onlineUsers");
   }, [user]);
 
   // Load all users
@@ -54,7 +61,6 @@ export default function Messenger({ user, onClose }) {
         setMessages(prev => [...prev, msg]);
       }
 
-      // Update left chat list
       setConversations(prev =>
         prev.map(c =>
           c._id === msg.conversationId
@@ -92,6 +98,8 @@ export default function Messenger({ user, onClose }) {
     return users[id];
   };
 
+  const isOnline = (id) => onlineUsers.includes(id); // 👈 NEW
+
   return (
     <div className="messenger-popup">
       <div className="messenger-header">
@@ -110,14 +118,18 @@ export default function Messenger({ user, onClose }) {
                 className={`convo ${active?._id === c._id ? "active" : ""}`}
                 onClick={() => setActive(c)}
               >
-                <img
-                  src={
-                    friend?.avatar
-                      ? `${API_BASE}${friend.avatar}`
-                      : "https://ui-avatars.com/api/?name=User"
-                  }
-                  className="convo-avatar"
-                />
+                <div className="avatar-wrap">
+                  <img
+                    src={
+                      friend?.avatar
+                        ? `${API_BASE}${friend.avatar}`
+                        : "https://ui-avatars.com/api/?name=User"
+                    }
+                    className="convo-avatar"
+                  />
+                  {isOnline(friend?._id) && <span className="online-dot"></span>}
+                </div>
+
                 <div>
                   <strong>{friend?.name || "User"}</strong>
                   <div className="last-msg">
@@ -135,6 +147,9 @@ export default function Messenger({ user, onClose }) {
             <>
               <div className="chat-header">
                 <strong>{getFriend(active)?.name || "Chat"}</strong>
+                {isOnline(getFriend(active)?._id) && (
+                  <span className="chat-online">Online</span>
+                )}
               </div>
 
               <div className="messages">
