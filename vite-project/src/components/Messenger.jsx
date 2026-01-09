@@ -12,20 +12,24 @@ export default function Messenger({ user, onClose }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const bottomRef = useRef();
 
-  /* ===== JOIN SOCKET ===== */
+  /* ===== SOCKET JOIN ===== */
   useEffect(() => {
     if (!user?._id) return;
 
+    socket.connect();
     socket.emit("join", user._id);
 
     socket.on("onlineUsers", (list) => {
-      setOnlineUsers(list);
+      setOnlineUsers(list || []);
     });
 
     socket.on("newMessage", (msg) => {
-      if (msg.conversationId === active?._id) {
-        setMessages((prev) => [...prev, msg]);
-      }
+      setMessages((prev) => {
+        if (msg.conversationId === active?._id) {
+          return [...prev, msg];
+        }
+        return prev;
+      });
 
       setConversations((prev) =>
         prev.map((c) =>
@@ -40,36 +44,39 @@ export default function Messenger({ user, onClose }) {
       socket.off("onlineUsers");
       socket.off("newMessage");
     };
-  }, [user, active]);
+  }, [user?._id, active?._id]);
 
   /* ===== LOAD USERS ===== */
   useEffect(() => {
-    fetch(`${API_BASE}/api/users`)
+    fetch(`${API_BASE}/users`)
       .then((r) => r.json())
       .then((list) => {
         const map = {};
         list.forEach((u) => (map[u._id] = u));
         setUsers(map);
-      });
+      })
+      .catch(() => {});
   }, []);
 
   /* ===== LOAD CONVERSATIONS ===== */
   useEffect(() => {
     if (!user?._id) return;
 
-    fetch(`${API_BASE}/api/conversations/${user._id}`)
+    fetch(`${API_BASE}/conversations/${user._id}`)
       .then((r) => r.json())
-      .then(setConversations);
-  }, [user]);
+      .then(setConversations)
+      .catch(() => {});
+  }, [user?._id]);
 
   /* ===== LOAD MESSAGES ===== */
   useEffect(() => {
-    if (!active) return;
+    if (!active?._id) return;
 
-    fetch(`${API_BASE}/api/messages/${active._id}`)
+    fetch(`${API_BASE}/messages/${active._id}`)
       .then((r) => r.json())
-      .then(setMessages);
-  }, [active]);
+      .then(setMessages)
+      .catch(() => {});
+  }, [active?._id]);
 
   /* ===== AUTO SCROLL ===== */
   useEffect(() => {
@@ -85,7 +92,7 @@ export default function Messenger({ user, onClose }) {
       conversationId: active._id,
       senderId: user._id,
       receiverId,
-      text,
+      text
     });
 
     setText("");
@@ -119,7 +126,7 @@ export default function Messenger({ user, onClose }) {
                   <img
                     src={
                       friend?.avatar
-                        ? `${API_BASE}${friend.avatar}`
+                        ? `${API_BASE.replace("/api", "")}${friend.avatar}`
                         : "https://ui-avatars.com/api/?name=User"
                     }
                     className="convo-avatar"
@@ -169,7 +176,7 @@ export default function Messenger({ user, onClose }) {
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
                 />
-                <button onClick={send}>Send</button>
+                <button className="messenger-btn" onClick={send}>⚡</button>
               </div>
             </>
           ) : (

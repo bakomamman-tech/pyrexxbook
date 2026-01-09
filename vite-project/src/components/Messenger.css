@@ -1,92 +1,201 @@
+/* ===== Popup Container ===== */
 .messenger-popup {
   position: fixed;
-  bottom: 80px;
+  bottom: 90px;
   right: 20px;
-  width: 700px;
-  height: 450px;
+  width: 720px;
+  height: 460px;
   background: white;
-  border-radius: 10px;
-  box-shadow: 0 0 20px rgba(0,0,0,.3);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.25);
   display: flex;
   flex-direction: column;
   z-index: 1000;
+  overflow: hidden;
 }
 
+/* ===== Header ===== */
 .messenger-header {
-  padding: 10px;
-  background: #c3005e;
+  padding: 12px 15px;
+  background: linear-gradient(135deg, #c3005e, #8a3ffc);
   color: white;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
 }
 
+/* ===== Body ===== */
 .messenger-body {
   display: flex;
   flex: 1;
+  background: #fafafa;
 }
 
+/* ===== Conversation List ===== */
 .messenger-left {
-  width: 30%;
-  border-right: 1px solid #ddd;
+  width: 32%;
+  border-right: 1px solid #e5e5e5;
   overflow-y: auto;
+  background: white;
 }
 
 .convo {
-  padding: 10px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
   cursor: pointer;
+  align-items: center;
+  transition: background .15s;
+}
+
+.convo:hover {
+  background: #f5f7ff;
 }
 
 .convo.active {
-  background: #f0f0f0;
+  background: #eef2ff;
 }
 
+/* ===== Avatar ===== */
+.avatar-wrap {
+  position: relative;
+}
+
+.convo-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.online-dot {
+  width: 10px;
+  height: 10px;
+  background: #00e676;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  border: 2px solid white;
+}
+
+.last-msg {
+  font-size: 12px;
+  color: #777;
+}
+
+/* ===== Chat Area ===== */
 .messenger-right {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
+.chat-header {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+}
+
+.chat-online {
+  color: #00c853;
+  font-size: 12px;
+}
+
+/* ===== Messages ===== */
 .messages {
   flex: 1;
-  padding: 10px;
+  padding: 15px;
   overflow-y: auto;
+  background: #f7f8fb;
+}
+
+.bubble {
+  max-width: 70%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
 .me {
-  text-align: right;
-  background: #c3005e;
+  background: linear-gradient(135deg, #c3005e, #8a3ffc);
   color: white;
-  margin: 5px;
-  padding: 8px;
-  border-radius: 10px;
+  margin-left: auto;
+  border-bottom-right-radius: 5px;
 }
 
 .them {
-  background: #eee;
-  margin: 5px;
-  padding: 8px;
-  border-radius: 10px;
+  background: #e9ebef;
+  border-bottom-left-radius: 5px;
 }
 
+/* ===== Send Box ===== */
 .send-box {
   display: flex;
-  padding: 10px;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid #ddd;
+  background: white;
 }
 
 .send-box input {
   flex: 1;
-  padding: 8px;
+  border: none;
+  background: #f1f3f6;
+  padding: 12px 15px;
+  border-radius: 20px;
+  outline: none;
 }
 
+/* ===== Thunder Messenger Button ===== */
+.messenger-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(135deg, #8a3ffc, #5b5fff, #00c6ff);
+
+  box-shadow:
+    0 6px 15px rgba(90, 60, 255, 0.5),
+    inset 0 0 4px rgba(255,255,255,0.3);
+
+  transition: all 0.2s ease;
+  color: white;
+  font-size: 20px;
+}
+
+.messenger-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 10px 25px rgba(90, 60, 255, 0.7),
+    inset 0 0 6px rgba(255,255,255,0.4);
+}
+
+.messenger-btn:active {
+  transform: scale(0.95);
+}
+
+/* ===== Floating Messenger Button ===== */
 .messenger-fab {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: #c3005e;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8a3ffc, #5b5fff, #00c6ff);
   color: white;
   border: none;
-  border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  font-size: 24px;
+  font-size: 26px;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(90, 60, 255, 0.6);
 }
