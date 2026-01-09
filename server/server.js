@@ -51,10 +51,8 @@ io.on("connection", (socket) => {
         updatedAt: new Date()
       });
 
-      // Send to sender
       io.to(socket.id).emit("newMessage", msg);
 
-      // Send to receiver if online
       const receiverSocket = onlineUsers.get(receiverId);
       if (receiverSocket) {
         io.to(receiverSocket).emit("newMessage", msg);
@@ -85,6 +83,12 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+/* ================= ROOT (Render needs this) ================= */
+
+app.get("/", (req, res) => {
+  res.send("PyrexxBook API is running");
+});
 
 const UPLOADS_PATH = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(UPLOADS_PATH));
