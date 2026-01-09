@@ -16,8 +16,10 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:5173",
-      "https://pyrexxbook-kurah.onrender.com"
+      "https://pyrexxbook-kurah.onrender.com",
+      "https://pyrexxbook-kurah-backend.onrender.com"
     ],
+    methods: ["GET", "POST"],
     credentials: true
   }
 });
@@ -25,6 +27,8 @@ const io = new Server(server, {
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
   socket.on("join", (userId) => {
     socket.userId = userId;
     onlineUsers.set(userId, socket.id);
@@ -32,25 +36,31 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", async (data) => {
-    const { conversationId, senderId, receiverId, text } = data;
+    try {
+      const { conversationId, senderId, receiverId, text } = data;
 
-    const msg = await Message.create({
-      conversationId,
-      senderId,
-      text,
-      time: new Date().toLocaleString()
-    });
+      const msg = await Message.create({
+        conversationId,
+        senderId,
+        text,
+        time: new Date().toLocaleString()
+      });
 
-    await Conversation.findByIdAndUpdate(conversationId, {
-      lastMessage: text,
-      updatedAt: new Date()
-    });
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: text,
+        updatedAt: new Date()
+      });
 
-    socket.emit("newMessage", msg);
+      // Send to sender
+      io.to(socket.id).emit("newMessage", msg);
 
-    const receiverSocket = onlineUsers.get(receiverId);
-    if (receiverSocket) {
-      io.to(receiverSocket).emit("newMessage", msg);
+      // Send to receiver if online
+      const receiverSocket = onlineUsers.get(receiverId);
+      if (receiverSocket) {
+        io.to(receiverSocket).emit("newMessage", msg);
+      }
+    } catch (err) {
+      console.error("Socket sendMessage error:", err);
     }
   });
 
@@ -59,6 +69,7 @@ io.on("connection", (socket) => {
       onlineUsers.delete(socket.userId);
       io.emit("onlineUsers", Array.from(onlineUsers.keys()));
     }
+    console.log("User disconnected:", socket.id);
   });
 });
 
@@ -67,7 +78,8 @@ io.on("connection", (socket) => {
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://pyrexxbook-kurah.onrender.com"
+    "https://pyrexxbook-kurah.onrender.com",
+    "https://pyrexxbook-kurah-backend.onrender.com"
   ],
   credentials: true
 }));
@@ -116,7 +128,7 @@ const Post = mongoose.model("Post", new mongoose.Schema({
   comments: [{ userId: String, text: String, time: String }]
 }));
 
-/* ============ STORIES WITH SEEN + 24H DELETE ============ */
+/* ============ STORIES ============ */
 
 const StorySchema = new mongoose.Schema({
   userId: String,
@@ -124,20 +136,13 @@ const StorySchema = new mongoose.Schema({
   avatar: String,
   image: String,
   createdAt: { type: Date, default: Date.now },
-
-  seenBy: [
-    {
-      userId: String,
-      name: String,
-      time: String
-    }
-  ]
+  seenBy: [{ userId: String, name: String, time: String }]
 });
 
 StorySchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
 const Story = mongoose.model("Story", StorySchema);
 
-/* ===================================================== */
+/* ================= MESSENGER MODELS ================= */
 
 const Conversation = mongoose.model("Conversation", new mongoose.Schema({
   members: [String],
@@ -182,70 +187,7 @@ app.post("/api/auth/login", async (req, res) => {
   res.json({ user });
 });
 
-/* ================= POSTS ================= */
-
-app.get("/api/posts", async (req, res) => {
-  res.json(await Post.find().sort({ _id: -1 }));
-});
-
-app.post("/api/posts", async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
-
-  const post = await Post.create({
-    userId: user._id,
-    name: user.name,
-    username: user.username,
-    avatar: user.avatar,
-    text: req.body.text,
-    time: new Date().toLocaleString(),
-    likes: [],
-    comments: []
-  });
-
-  res.json(post);
-});
-
-/* ================= STORIES ================= */
-
-// Upload story
-app.post("/api/stories", upload.single("image"), async (req, res) => {
-  const user = await User.findById(req.body.userId);
-
-  const story = await Story.create({
-    userId: user._id,
-    name: user.name,
-    avatar: user.avatar,
-    image: "/uploads/" + req.file.filename,
-    seenBy: []
-  });
-
-  res.json(story);
-});
-
-// Get stories
-app.get("/api/stories", async (req, res) => {
-  const stories = await Story.find().sort({ createdAt: -1 });
-  res.json(stories);
-});
-
-// Mark story as seen 👁
-app.post("/api/stories/:id/seen", async (req, res) => {
-  const { userId, name } = req.body;
-  const story = await Story.findById(req.params.id);
-
-  if (!story.seenBy.some(v => v.userId === userId)) {
-    story.seenBy.push({
-      userId,
-      name,
-      time: new Date().toLocaleString()
-    });
-    await story.save();
-  }
-
-  res.json({ success: true });
-});
-
-/* ================= MESSENGER ================= */
+/* ================= MESSENGER API ================= */
 
 app.post("/api/conversations", async (req, res) => {
   let convo = await Conversation.findOne({
