@@ -88,7 +88,7 @@ app.use(cors({
 
 app.use(express.json());
 
-/* ================= ROOT (Render health check) ================= */
+/* ================= ROOT ================= */
 
 app.get("/", (req, res) => {
   res.send("PyrexxBook API is running");
@@ -165,6 +165,17 @@ const Message = mongoose.model("Message", new mongoose.Schema({
   text: String,
   time: String
 }));
+
+/* ================= USERS (FOR MESSENGER) ================= */
+
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load users" });
+  }
+});
 
 /* ================= AUTH ================= */
 
