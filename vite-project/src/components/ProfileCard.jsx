@@ -3,7 +3,6 @@ import API_BASE from "../utils/api";
 import "./ProfileCard.css";
 
 function ProfileCard({ user }) {
-  const [tab, setTab] = useState("posts");
   const [profile, setProfile] = useState(user);
   const [logged, setLogged] = useState(() => {
     try {
@@ -123,27 +122,11 @@ function ProfileCard({ user }) {
           <div>
             <h2>{profile.name}</h2>
             <p>@{profile.username}</p>
-            <p>{profile.followers?.length || 0} followers</p>
+            <p>{profile.followers?.length || 0} friends</p>
           </div>
 
           {logged._id !== profile._id && renderButton()}
         </div>
-      </div>
-
-      <div className="profile-tabs">
-        <span onClick={() => setTab("posts")} className={tab === "posts" ? "active" : ""}>Posts</span>
-        <span onClick={() => setTab("about")} className={tab === "about" ? "active" : ""}>About</span>
-        <span onClick={() => setTab("photos")} className={tab === "photos" ? "active" : ""}>Photos</span>
-        <span onClick={() => setTab("followers")} className={tab === "followers" ? "active" : ""}>Followers</span>
-      </div>
-
-      <div className="profile-content">
-        {tab === "posts" && <p>No posts yet</p>}
-        {tab === "about" && <p>{profile.bio || "No bio yet"}</p>}
-        {tab === "photos" && <p>Photos will appear here</p>}
-        {tab === "followers" && (
-          <p>{profile.followers?.length || 0} followers</p>
-        )}
       </div>
     </div>
   );
