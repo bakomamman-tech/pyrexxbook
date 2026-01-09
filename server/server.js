@@ -8,6 +8,10 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
+
+/* 🔥 REQUIRED FOR RENDER + EXPRESS 5 */
+app.set("trust proxy", 1);
+
 const server = http.createServer(app);
 
 /* ================= SOCKET.IO ================= */
@@ -84,7 +88,7 @@ app.use(cors({
 
 app.use(express.json());
 
-/* ================= ROOT (Render needs this) ================= */
+/* ================= ROOT (Render health check) ================= */
 
 app.get("/", (req, res) => {
   res.send("PyrexxBook API is running");
@@ -93,8 +97,9 @@ app.get("/", (req, res) => {
 const UPLOADS_PATH = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(UPLOADS_PATH));
 
-mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/pyrexxbook")
-  .then(() => console.log("MongoDB connected"));
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.error("MongoDB error:", err));
 
 /* ================= MULTER ================= */
 
@@ -132,7 +137,7 @@ const Post = mongoose.model("Post", new mongoose.Schema({
   comments: [{ userId: String, text: String, time: String }]
 }));
 
-/* ============ STORIES ============ */
+/* ================= STORIES ================= */
 
 const StorySchema = new mongoose.Schema({
   userId: String,
