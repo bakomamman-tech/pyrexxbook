@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 
 const SOCKET_URL =
   window.location.hostname === "localhost"
-    ? "http://localhost:10000"
+    ? "http://localhost:5000"
     : "https://pyrexxbook-kurah-backend.onrender.com";
 
 const socket = io(SOCKET_URL, {
