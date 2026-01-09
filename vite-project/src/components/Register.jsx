@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_BASE from "../utils/api";
 
-function Register() {
+export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,6 +12,7 @@ function Register() {
 
   const register = async (e) => {
     e.preventDefault();
+    setError("");
 
     if (!name || !email || !password) {
       return setError("All fields are required");
@@ -19,7 +20,6 @@ function Register() {
 
     try {
       setLoading(true);
-      setError("");
 
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
@@ -33,12 +33,18 @@ function Register() {
         throw new Error(data.message || "Registration failed");
       }
 
-      // Store only the user object
+      if (!data.user || !data.user._id) {
+        throw new Error("Invalid server response");
+      }
+
+      // Save logged-in user
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      navigate("/");
+      // Go to feed
+      window.location.href = "/";
     } catch (err) {
-      setError(err.message || "Server not responding");
+      console.error(err);
+      setError(err.message || "Unable to connect to server");
     } finally {
       setLoading(false);
     }
@@ -59,6 +65,7 @@ function Register() {
         />
 
         <input
+          type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -74,7 +81,7 @@ function Register() {
         />
 
         <button disabled={loading}>
-          {loading ? "Creating..." : "Sign Up"}
+          {loading ? "Creating account..." : "Sign Up"}
         </button>
 
         <p
@@ -87,8 +94,6 @@ function Register() {
     </div>
   );
 }
-
-export default Register;
 
 const styles = {
   page: {
@@ -105,7 +110,8 @@ const styles = {
     width: 320,
     display: "flex",
     flexDirection: "column",
-    gap: 10
+    gap: 10,
+    boxShadow: "0 4px 20px rgba(0,0,0,0.1)"
   },
   link: {
     marginTop: 10,

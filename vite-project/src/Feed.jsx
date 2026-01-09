@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import ProfileCard from "./components/ProfileCard";
 import StoryBar from "./components/StoryBar";
-import ImageModal from "./components/ImageModal";
 import Messenger from "./components/Messenger";
 import API_BASE from "./utils/api";
 import "./Feed.css";
@@ -10,29 +9,19 @@ export default function Feed() {
   const [posts, setPosts] = useState([]);
   const [text, setText] = useState("");
   const [commentText, setCommentText] = useState({});
-  const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showMessenger, setShowMessenger] = useState(false);
 
-  const user = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("user"));
-    } catch {
-      return null;
-    }
-  })();
+  const user = JSON.parse(localStorage.getItem("user"));
 
-  /* ===== SAFE AVATAR ===== */
   const avatarUrl = (name, avatar) => {
     if (!avatar)
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        name || "User"
-      )}&background=C3005E&color=fff`;
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}`;
     if (avatar.startsWith("http")) return avatar;
     return `${API_BASE.replace("/api", "")}${avatar}`;
   };
 
-  /* ===== LOAD FEED ===== */
+  /* ================= LOAD POSTS ================= */
   useEffect(() => {
     if (!user) return;
 
@@ -44,8 +33,7 @@ export default function Feed() {
 
   const reload = async () => {
     const res = await fetch(`${API_BASE}/posts`);
-    const data = await res.json();
-    setPosts(data);
+    setPosts(await res.json());
   };
 
   const createPost = async () => {
@@ -54,44 +42,37 @@ export default function Feed() {
     await fetch(`${API_BASE}/posts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: user.email,
-        text
-      })
+      body: JSON.stringify({ email: user.email, text })
     });
 
     setText("");
     reload();
   };
 
-  const toggleLike = async postId => {
-    await fetch(`${API_BASE}/posts/like/${postId}`, {
+  const toggleLike = async id => {
+    await fetch(`${API_BASE}/posts/like/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user._id })
     });
-
     reload();
   };
 
-  const addComment = async postId => {
-    if (!commentText[postId]) return;
+  const addComment = async id => {
+    if (!commentText[id]) return;
 
-    await fetch(`${API_BASE}/posts/comment/${postId}`, {
+    await fetch(`${API_BASE}/posts/comment/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user._id,
-        text: commentText[postId]
-      })
+      body: JSON.stringify({ userId: user._id, text: commentText[id] })
     });
 
-    setCommentText({ ...commentText, [postId]: "" });
+    setCommentText({ ...commentText, [id]: "" });
     reload();
   };
 
-  if (!user) return <div style={{ padding: 20 }}>Please log in</div>;
-  if (loading) return <div style={{ padding: 20 }}>Loading feed…</div>;
+  if (!user) return <div>Please login</div>;
+  if (loading) return <div>Loading…</div>;
 
   return (
     <div className="feed-container">
@@ -99,7 +80,7 @@ export default function Feed() {
       <StoryBar user={user} />
 
       <div className="create-post">
-        <img src={avatarUrl(user.name, user.avatar)} alt="" />
+        <img src={avatarUrl(user.name, user.avatar)} />
         <textarea
           placeholder={`What's on your mind, ${user.name}?`}
           value={text}
@@ -108,68 +89,41 @@ export default function Feed() {
         <button onClick={createPost}>Post</button>
       </div>
 
-      {posts.map(post => (
-        <div className="post" key={post._id}>
-          <div className="post-header">
-            <img src={avatarUrl(post.name, post.avatar)} alt="" />
-            <div>
-              <div className="post-name">{post.name}</div>
-              <div className="post-time">{post.time}</div>
-            </div>
-          </div>
+      {posts.map(p => (
+        <div key={p._id} className="post">
+          <strong>{p.name}</strong>
+          <p>{p.text}</p>
 
-          <div className="post-text">{post.text}</div>
+          <button onClick={() => toggleLike(p._id)}>
+            ❤️ {p.likes?.length || 0}
+          </button>
 
-          <div className="post-actions">
-            <button onClick={() => toggleLike(post._id)}>
-              {post.likes?.includes(user._id) ? "❤️" : "🤍"}{" "}
-              {post.likes?.length || 0}
-            </button>
-          </div>
+          {p.comments?.map((c, i) => (
+            <div key={i}>{c.text}</div>
+          ))}
 
-          <div className="comments">
-            {post.comments?.map((c, i) => (
-              <div key={i} className="comment">
-                <strong>{c.userId === user._id ? "You" : "User"}:</strong>{" "}
-                {c.text}
-              </div>
-            ))}
-
-            <div className="comment-box">
-              <input
-                placeholder="Write a comment..."
-                value={commentText[post._id] || ""}
-                onChange={e =>
-                  setCommentText({ ...commentText, [post._id]: e.target.value })
-                }
-              />
-              <button onClick={() => addComment(post._id)}>Post</button>
-            </div>
-          </div>
+          <input
+            placeholder="Write a comment..."
+            value={commentText[p._id] || ""}
+            onChange={e =>
+              setCommentText({ ...commentText, [p._id]: e.target.value })
+            }
+          />
+          <button onClick={() => addComment(p._id)}>Send</button>
         </div>
       ))}
 
-      {/* ===== MESSENGER BUTTON ===== */}
       <button
         className="messenger-fab"
-        style={{ zIndex: 2000 }}
-        onClick={() => {
-          console.log("⚡ Messenger open");
-          setShowMessenger(true);
-        }}
+        onClick={() => setShowMessenger(true)}
       >
         ⚡
       </button>
 
-      {/* ===== FORCE MESSENGER RENDER ===== */}
-      {showMessenger && user && (
-        <Messenger user={user} onClose={() => setShowMessenger(false)} />
-      )}
-
-      {selectedImage && (
-        <ImageModal
-          src={selectedImage}
-          onClose={() => setSelectedImage(null)}
+      {showMessenger && (
+        <Messenger
+          user={user}
+          onClose={() => setShowMessenger(false)}
         />
       )}
     </div>

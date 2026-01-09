@@ -12,7 +12,8 @@ export default function Messenger({ user, onClose }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const bottomRef = useRef();
 
-  /* ===== SOCKET JOIN ===== */
+  /* ================= SOCKET ================= */
+
   useEffect(() => {
     if (!user?._id) return;
 
@@ -46,7 +47,8 @@ export default function Messenger({ user, onClose }) {
     };
   }, [user?._id, active?._id]);
 
-  /* ===== LOAD USERS ===== */
+  /* ================= LOAD USERS ================= */
+
   useEffect(() => {
     fetch(`${API_BASE}/users`)
       .then((r) => r.json())
@@ -58,7 +60,8 @@ export default function Messenger({ user, onClose }) {
       .catch(() => {});
   }, []);
 
-  /* ===== LOAD CONVERSATIONS ===== */
+  /* ================= LOAD CONVERSATIONS ================= */
+
   useEffect(() => {
     if (!user?._id) return;
 
@@ -68,7 +71,8 @@ export default function Messenger({ user, onClose }) {
       .catch(() => {});
   }, [user?._id]);
 
-  /* ===== LOAD MESSAGES ===== */
+  /* ================= LOAD MESSAGES ================= */
+
   useEffect(() => {
     if (!active?._id) return;
 
@@ -78,10 +82,33 @@ export default function Messenger({ user, onClose }) {
       .catch(() => {});
   }, [active?._id]);
 
-  /* ===== AUTO SCROLL ===== */
+  /* ================= AUTOSCROLL ================= */
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  /* ================= HELPERS ================= */
+
+  const getFriend = (convo) => {
+    const id = convo.members.find((m) => m !== user._id);
+    return users[id];
+  };
+
+  const isOnline = (id) => onlineUsers.includes(id);
+
+  const avatar = (u) => {
+    if (!u?.avatar)
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        u?.name || "User"
+      )}`;
+
+    if (u.avatar.startsWith("http")) return u.avatar;
+
+    return `${API_BASE.replace("/api", "")}${u.avatar}`;
+  };
+
+  /* ================= SEND ================= */
 
   const send = () => {
     if (!text.trim() || !active) return;
@@ -98,12 +125,7 @@ export default function Messenger({ user, onClose }) {
     setText("");
   };
 
-  const getFriend = (convo) => {
-    const id = convo.members.find((m) => m !== user._id);
-    return users[id];
-  };
-
-  const isOnline = (id) => onlineUsers.includes(id);
+  /* ================= UI ================= */
 
   return (
     <div className="messenger-popup">
@@ -113,9 +135,11 @@ export default function Messenger({ user, onClose }) {
       </div>
 
       <div className="messenger-body">
+        {/* LEFT – CONVERSATIONS */}
         <div className="messenger-left">
           {conversations.map((c) => {
             const friend = getFriend(c);
+
             return (
               <div
                 key={c._id}
@@ -123,14 +147,7 @@ export default function Messenger({ user, onClose }) {
                 onClick={() => setActive(c)}
               >
                 <div className="avatar-wrap">
-                  <img
-                    src={
-                      friend?.avatar
-                        ? `${API_BASE.replace("/api", "")}${friend.avatar}`
-                        : "https://ui-avatars.com/api/?name=User"
-                    }
-                    className="convo-avatar"
-                  />
+                  <img src={avatar(friend)} className="convo-avatar" />
                   {isOnline(friend?._id) && <span className="online-dot" />}
                 </div>
 
@@ -145,6 +162,7 @@ export default function Messenger({ user, onClose }) {
           })}
         </div>
 
+        {/* RIGHT – CHAT */}
         <div className="messenger-right">
           {active ? (
             <>
@@ -176,7 +194,9 @@ export default function Messenger({ user, onClose }) {
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
                 />
-                <button className="messenger-btn" onClick={send}>⚡</button>
+                <button className="messenger-btn" onClick={send}>
+                  ⚡
+                </button>
               </div>
             </>
           ) : (

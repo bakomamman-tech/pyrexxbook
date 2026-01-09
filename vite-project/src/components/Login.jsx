@@ -2,9 +2,7 @@ import { useState } from "react";
 import API_BASE from "../utils/api";
 import "./Login.css";
 
-export default function Login({ setUser }) {
-  const [isRegister, setIsRegister] = useState(false);
-  const [name, setName] = useState("");
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -16,53 +14,31 @@ export default function Login({ setUser }) {
     setLoading(true);
 
     try {
-      if (isRegister) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          setError("Please enter a valid email address");
-          setLoading(false);
-          return;
-        }
-      }
-
-      const url = isRegister
-        ? `${API_BASE}/api/auth/register`
-        : `${API_BASE}/api/auth/login`;
-
-      const body = isRegister
-        ? { name, email, password }
-        : { email, password };
-
-      const res = await fetch(url, {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ email, password })
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Login failed");
-        setLoading(false);
-        return;
+        throw new Error(data.message || "Login failed");
       }
 
-      // 🔥 ALWAYS normalize the user object
-      const user = data.user ? data.user : data;
-
-      if (!user || !user._id) {
-        setError("Invalid login response");
-        setLoading(false);
-        return;
+      if (!data.user || !data.user._id) {
+        throw new Error("Invalid login response");
       }
 
-      // 🔥 Store the correct object
-      localStorage.setItem("user", JSON.stringify(user));
-      setUser(user);
+      // Save user
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Hard redirect so socket + feed reinitialize cleanly
+      window.location.href = "/";
 
     } catch (err) {
       console.error(err);
-      setError("Unable to reach server");
+      setError(err.message || "Unable to reach server");
     } finally {
       setLoading(false);
     }
@@ -71,15 +47,7 @@ export default function Login({ setUser }) {
   return (
     <div className="login-page">
       <div className="login-box">
-        <h2>{isRegister ? "Create Account" : "Login"}</h2>
-
-        {isRegister && (
-          <input
-            placeholder="Full Name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
-        )}
+        <h2>Login</h2>
 
         <input
           type="email"
@@ -95,6 +63,7 @@ export default function Login({ setUser }) {
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
+            required
           />
 
           <span
@@ -106,15 +75,16 @@ export default function Login({ setUser }) {
         </div>
 
         <button onClick={submit} disabled={loading}>
-          {loading ? "Please wait..." : isRegister ? "Create Account" : "Login"}
+          {loading ? "Logging in..." : "Login"}
         </button>
 
         {error && <p style={{ color: "red" }}>{error}</p>}
 
-        <p className="toggle" onClick={() => setIsRegister(!isRegister)}>
-          {isRegister
-            ? "Already have an account? Login"
-            : "Don't have an account? Create one"}
+        <p
+          className="toggle"
+          onClick={() => (window.location.href = "/register")}
+        >
+          Don't have an account? Create one
         </p>
       </div>
     </div>
