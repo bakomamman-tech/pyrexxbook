@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ProfileCard from "./components/ProfileCard";
 import StoryBar from "./components/StoryBar";
 import ImageModal from "./components/ImageModal";
+import Messenger from "./components/Messenger";
 import API_BASE from "./utils/api";
 import "./Feed.css";
 
@@ -11,6 +12,7 @@ export default function Feed() {
   const [commentText, setCommentText] = useState({});
   const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showMessenger, setShowMessenger] = useState(false);
 
   const user = (() => {
     try {
@@ -26,43 +28,35 @@ export default function Feed() {
         name
       )}&background=C3005E&color=fff`;
     if (avatar.startsWith("http")) return avatar;
-    return `${API_BASE}${avatar}`;
+    return `${API_BASE.replace("/api", "")}${avatar}`;
   };
 
-  /* 🔥 Load feed (React 19 safe) */
+  /* ===== LOAD FEED ===== */
   useEffect(() => {
     if (!user) return;
 
-    let cancelled = false;
-
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/posts`);
+        const res = await fetch(`${API_BASE}/posts`);
         const data = await res.json();
-        if (!cancelled) {
-          setPosts([...data]);   // force React update
-          setLoading(false);
-        }
+        setPosts(data);
+        setLoading(false);
       } catch (e) {
         console.error(e);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [user]);
 
   const reload = async () => {
-    const res = await fetch(`${API_BASE}/api/posts`);
+    const res = await fetch(`${API_BASE}/posts`);
     const data = await res.json();
-    setPosts([...data]);
+    setPosts(data);
   };
 
   const createPost = async () => {
     if (!text.trim()) return;
 
-    await fetch(`${API_BASE}/api/posts`, {
+    await fetch(`${API_BASE}/posts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -72,23 +66,23 @@ export default function Feed() {
     });
 
     setText("");
-    await reload();
+    reload();
   };
 
   const toggleLike = async postId => {
-    await fetch(`${API_BASE}/api/posts/like/${postId}`, {
+    await fetch(`${API_BASE}/posts/like/${postId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user._id })
     });
 
-    await reload();
+    reload();
   };
 
   const addComment = async postId => {
     if (!commentText[postId]) return;
 
-    await fetch(`${API_BASE}/api/posts/comment/${postId}`, {
+    await fetch(`${API_BASE}/posts/comment/${postId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -98,7 +92,7 @@ export default function Feed() {
     });
 
     setCommentText({ ...commentText, [postId]: "" });
-    await reload();
+    reload();
   };
 
   if (!user) return <div style={{ padding: 20 }}>Please log in</div>;
@@ -159,6 +153,15 @@ export default function Feed() {
           </div>
         </div>
       ))}
+
+      {/* ===== FACEBOOK STYLE MESSENGER BUTTON ===== */}
+      <button className="messenger-fab" onClick={() => setShowMessenger(true)}>
+        ⚡
+      </button>
+
+      {showMessenger && (
+        <Messenger user={user} onClose={() => setShowMessenger(false)} />
+      )}
 
       {selectedImage && (
         <ImageModal
