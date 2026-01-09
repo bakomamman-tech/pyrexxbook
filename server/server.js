@@ -7,7 +7,6 @@ const { Server } = require("socket.io");
 
 const app = express();
 app.set("trust proxy", 1);
-
 const server = http.createServer(app);
 
 /* ================= SOCKET.IO ================= */
@@ -95,8 +94,8 @@ const User = mongoose.model("User", new mongoose.Schema({
   username: String,
   email: String,
   password: String,
-  avatar: String,
-  cover: String,
+  avatar: { type: String, default: "/uploads/default.png" },
+  cover: { type: String, default: "/uploads/cover-default.jpg" },
   bio: String,
   joined: String,
   followers: { type: [String], default: [] },
@@ -134,6 +133,59 @@ app.get("/api/users", async (req, res) => {
   res.json(await User.find().select("-password"));
 });
 
+/* ================= POSTS (🔥 FIXED) ================= */
+
+app.get("/api/posts", async (req, res) => {
+  const posts = await Post.find().sort({ _id: -1 });
+  res.json(posts);
+});
+
+app.post("/api/posts", async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  const post = await Post.create({
+    userId: user._id,
+    name: user.name,
+    username: user.username,
+    avatar: user.avatar,
+    text: req.body.text,
+    time: new Date().toLocaleString(),
+    likes: [],
+    comments: []
+  });
+
+  res.json(post);
+});
+
+app.post("/api/posts/like/:id", async (req, res) => {
+  const post = await Post.findById(req.params.id);
+  if (!post) return res.status(404).json({ message: "Post not found" });
+
+  if (post.likes.includes(req.body.userId)) {
+    post.likes = post.likes.filter(id => id !== req.body.userId);
+  } else {
+    post.likes.push(req.body.userId);
+  }
+
+  await post.save();
+  res.json(post);
+});
+
+app.post("/api/posts/comment/:id", async (req, res) => {
+  const post = await Post.findById(req.params.id);
+  if (!post) return res.status(404).json({ message: "Post not found" });
+
+  post.comments.push({
+    userId: req.body.userId,
+    text: req.body.text,
+    time: new Date().toLocaleString()
+  });
+
+  await post.save();
+  res.json(post);
+});
+
 /* ================= AUTH ================= */
 
 app.post("/api/auth/register", async (req, res) => {
@@ -146,8 +198,6 @@ app.post("/api/auth/register", async (req, res) => {
     username: name.toLowerCase().replace(/\s+/g, ""),
     email,
     password: hashed,
-    avatar: "/uploads/default.png",
-    cover: "/uploads/cover-default.jpg",
     joined: new Date().toISOString().split("T")[0]
   });
 
@@ -170,16 +220,14 @@ app.post("/api/friends/request", async (req, res) => {
   const sender = await User.findById(fromId);
   const receiver = await User.findById(toId);
 
-  if (!receiver.friendRequests.includes(fromId) &&
-      !receiver.followers.includes(fromId)) {
+  if (!receiver.friendRequests.includes(fromId)) {
     receiver.friendRequests.push(fromId);
     await receiver.save();
   }
 
-  // 🔔 Real-time notification
-  const receiverSocket = onlineUsers.get(toId);
-  if (receiverSocket) {
-    io.to(receiverSocket).emit("friendRequest", {
+  const socketId = onlineUsers.get(toId);
+  if (socketId) {
+    io.to(socketId).emit("friendRequest", {
       fromId,
       name: sender.name,
       avatar: sender.avatar
@@ -205,11 +253,9 @@ app.post("/api/friends/accept", async (req, res) => {
   await user.save();
   await requester.save();
 
-  // 🔔 Notify requester
-  const requesterSocket = onlineUsers.get(requesterId);
-  if (requesterSocket) {
-    io.to(requesterSocket).emit("friendAccepted", {
-      userId,
+  const socketId = onlineUsers.get(requesterId);
+  if (socketId) {
+    io.to(socketId).emit("friendAccepted", {
       name: user.name
     });
   }
@@ -219,8 +265,8 @@ app.post("/api/friends/accept", async (req, res) => {
 
 app.post("/api/friends/reject", async (req, res) => {
   const { userId, requesterId } = req.body;
-
   const user = await User.findById(userId);
+
   user.friendRequests = user.friendRequests.filter(id => id !== requesterId);
   await user.save();
 
