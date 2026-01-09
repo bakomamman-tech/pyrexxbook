@@ -1,9 +1,7 @@
 # PyrexxBook  
 A full-stack social media platform with real-time chat, stories, and secure authentication.
 
-🔗 Live App: https://pyrexxbook-kurahz.onrender.com
-
----
+🔗 Live App: https://pyrexxbook-kurah.onrender.com
 
 ## 🚀 Why PyrexxBook?
 Most beginner social media apps lack real-time features, scalability, and secure authentication.  
