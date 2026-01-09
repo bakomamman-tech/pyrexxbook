@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import API_BASE from "../utils/api";
+import socket from "../socket";
 import "./Messenger.css";
-
-const socket = io(API_BASE.replace("/api", ""), {
-  transports: ["websocket"],
-});
 
 export default function Messenger({ user, onClose }) {
   const [conversations, setConversations] = useState([]);
@@ -13,11 +9,13 @@ export default function Messenger({ user, onClose }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [users, setUsers] = useState({});
-  const [onlineUsers, setOnlineUsers] = useState([]); // 👈 NEW
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const bottomRef = useRef();
 
   // Join socket as this user
   useEffect(() => {
+    if (!user?._id) return;
+
     socket.emit("join", user._id);
 
     socket.on("onlineUsers", users => {
@@ -40,6 +38,8 @@ export default function Messenger({ user, onClose }) {
 
   // Load conversations
   useEffect(() => {
+    if (!user?._id) return;
+
     fetch(`${API_BASE}/api/conversations/${user._id}`)
       .then(r => r.json())
       .then(setConversations);
@@ -98,7 +98,7 @@ export default function Messenger({ user, onClose }) {
     return users[id];
   };
 
-  const isOnline = (id) => onlineUsers.includes(id); // 👈 NEW
+  const isOnline = id => onlineUsers.includes(id);
 
   return (
     <div className="messenger-popup">
@@ -127,7 +127,9 @@ export default function Messenger({ user, onClose }) {
                     }
                     className="convo-avatar"
                   />
-                  {isOnline(friend?._id) && <span className="online-dot"></span>}
+                  {isOnline(friend?._id) && (
+                    <span className="online-dot"></span>
+                  )}
                 </div>
 
                 <div>
