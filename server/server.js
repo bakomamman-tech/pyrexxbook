@@ -3,12 +3,13 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");          // 🔥 FIXED
 const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
 app.set("trust proxy", 1);
+
 const server = http.createServer(app);
 
 /* ================= SOCKET.IO ================= */
@@ -27,6 +28,8 @@ const io = new Server(server, {
 const onlineUsers = new Map();
 
 io.on("connection", socket => {
+  console.log("Socket connected:", socket.id);
+
   socket.on("join", userId => {
     socket.userId = userId;
     onlineUsers.set(userId, socket.id);
@@ -65,7 +68,8 @@ io.on("connection", socket => {
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://pyrexxbook-kurah.onrender.com"
+    "https://pyrexxbook-kurah.onrender.com",
+    "https://pyrexxbook-kurah-backend.onrender.com"
   ],
   credentials: true
 }));
@@ -82,7 +86,8 @@ const UPLOADS_PATH = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(UPLOADS_PATH));
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"));
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.error("MongoDB error:", err));
 
 /* ================= MODELS ================= */
 
@@ -121,15 +126,6 @@ const Message = mongoose.model("Message", new mongoose.Schema({
   senderId: String,
   text: String,
   time: String
-}));
-
-const Story = mongoose.model("Story", new mongoose.Schema({
-  userId: String,
-  name: String,
-  avatar: String,
-  image: String,
-  createdAt: { type: Date, default: Date.now },
-  seenBy: [{ userId: String, name: String, time: String }]
 }));
 
 /* ================= USERS ================= */
@@ -186,7 +182,8 @@ app.post("/api/posts/comment/:id", async (req, res) => {
 
 app.post("/api/auth/register", async (req, res) => {
   const { name, email, password } = req.body;
-  const hashed = await bcrypt.hash(password, 10);
+
+  const hashed = await bcrypt.hash(password, 10);   // 🔥 DOES NOT HANG
 
   const user = await User.create({
     name,
