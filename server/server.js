@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const path = require("path");
 const bcrypt = require("bcrypt");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -27,6 +26,8 @@ const io = new Server(server, {
 const onlineUsers = new Map();
 
 io.on("connection", socket => {
+  console.log("Socket connected:", socket.id);
+
   socket.on("join", userId => {
     socket.userId = userId;
     onlineUsers.set(userId, socket.id);
@@ -34,22 +35,26 @@ io.on("connection", socket => {
   });
 
   socket.on("sendMessage", async ({ conversationId, senderId, receiverId, text }) => {
-    const msg = await Message.create({
-      conversationId,
-      senderId,
-      text,
-      time: new Date().toLocaleString()
-    });
+    try {
+      const msg = await Message.create({
+        conversationId,
+        senderId,
+        text,
+        time: new Date().toLocaleString()
+      });
 
-    await Conversation.findByIdAndUpdate(conversationId, {
-      lastMessage: text,
-      updatedAt: new Date()
-    });
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: text,
+        updatedAt: new Date()
+      });
 
-    io.to(socket.id).emit("newMessage", msg);
+      io.to(socket.id).emit("newMessage", msg);
 
-    const receiverSocket = onlineUsers.get(receiverId);
-    if (receiverSocket) io.to(receiverSocket).emit("newMessage", msg);
+      const receiverSocket = onlineUsers.get(receiverId);
+      if (receiverSocket) io.to(receiverSocket).emit("newMessage", msg);
+    } catch (err) {
+      console.error("Socket sendMessage error:", err);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -94,9 +99,9 @@ const User = mongoose.model("User", new mongoose.Schema({
   cover: String,
   bio: String,
   joined: String,
-  followers: [String],
-  following: [String],
-  friendRequests: [String]   // 🔥 NEW
+  followers: { type: [String], default: [] },
+  following: { type: [String], default: [] },
+  friendRequests: { type: [String], default: [] }
 }));
 
 const Post = mongoose.model("Post", new mongoose.Schema({
@@ -106,7 +111,7 @@ const Post = mongoose.model("Post", new mongoose.Schema({
   avatar: String,
   text: String,
   time: String,
-  likes: [String],
+  likes: { type: [String], default: [] },
   comments: [{ userId: String, text: String, time: String }]
 }));
 
@@ -143,10 +148,7 @@ app.post("/api/auth/register", async (req, res) => {
     password: hashed,
     avatar: "/uploads/default.png",
     cover: "/uploads/cover-default.jpg",
-    joined: new Date().toISOString().split("T")[0],
-    followers: [],
-    following: [],
-    friendRequests: []
+    joined: new Date().toISOString().split("T")[0]
   });
 
   res.json({ user });
@@ -165,10 +167,23 @@ app.post("/api/auth/login", async (req, res) => {
 app.post("/api/friends/request", async (req, res) => {
   const { fromId, toId } = req.body;
 
-  const toUser = await User.findById(toId);
-  if (!toUser.friendRequests.includes(fromId)) {
-    toUser.friendRequests.push(fromId);
-    await toUser.save();
+  const sender = await User.findById(fromId);
+  const receiver = await User.findById(toId);
+
+  if (!receiver.friendRequests.includes(fromId) &&
+      !receiver.followers.includes(fromId)) {
+    receiver.friendRequests.push(fromId);
+    await receiver.save();
+  }
+
+  // 🔔 Real-time notification
+  const receiverSocket = onlineUsers.get(toId);
+  if (receiverSocket) {
+    io.to(receiverSocket).emit("friendRequest", {
+      fromId,
+      name: sender.name,
+      avatar: sender.avatar
+    });
   }
 
   res.json({ success: true });
@@ -182,22 +197,30 @@ app.post("/api/friends/accept", async (req, res) => {
 
   user.friendRequests = user.friendRequests.filter(id => id !== requesterId);
 
-  user.followers.push(requesterId);
-  user.following.push(requesterId);
-
-  requester.followers.push(userId);
-  requester.following.push(userId);
+  if (!user.followers.includes(requesterId)) user.followers.push(requesterId);
+  if (!user.following.includes(requesterId)) user.following.push(requesterId);
+  if (!requester.followers.includes(userId)) requester.followers.push(userId);
+  if (!requester.following.includes(userId)) requester.following.push(userId);
 
   await user.save();
   await requester.save();
+
+  // 🔔 Notify requester
+  const requesterSocket = onlineUsers.get(requesterId);
+  if (requesterSocket) {
+    io.to(requesterSocket).emit("friendAccepted", {
+      userId,
+      name: user.name
+    });
+  }
 
   res.json({ success: true });
 });
 
 app.post("/api/friends/reject", async (req, res) => {
   const { userId, requesterId } = req.body;
-  const user = await User.findById(userId);
 
+  const user = await User.findById(userId);
   user.friendRequests = user.friendRequests.filter(id => id !== requesterId);
   await user.save();
 
@@ -223,7 +246,9 @@ app.post("/api/conversations", async (req, res) => {
     members: { $all: [senderId, receiverId] }
   });
 
-  if (!convo) convo = await Conversation.create({ members: [senderId, receiverId] });
+  if (!convo) {
+    convo = await Conversation.create({ members: [senderId, receiverId] });
+  }
 
   res.json(convo);
 });
