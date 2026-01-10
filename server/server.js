@@ -79,15 +79,17 @@ app.use(express.json());
 
 
 
-/* ================= SERVE REACT ================= */
+/* ================= SERVE REACT (VITE BUILD) ================= */
 
-const clientPath = path.join(__dirname, "../vite-project/dist");
+const clientPath = path.join(__dirname, "..", "vite-project", "dist");
 
 app.use(express.static(clientPath));
 
-app.get("/", (req, res) => {
+app.get("*", (req, res) => {
   res.sendFile(path.join(clientPath, "index.html"));
 });
+
+
 
 /* ================= DATABASE ================= */
 
@@ -139,13 +141,11 @@ const Message = mongoose.model("Message", new mongoose.Schema({
 
 
 
-/* ================= USERS ================= */
+/* ================= API ================= */
 
 app.get("/api/users", async (req, res) => {
   res.json(await User.find().select("-password"));
 });
-
-/* ================= POSTS ================= */
 
 app.get("/api/posts", async (req, res) => {
   const posts = await Post.find().sort({ _id: -1 });
@@ -170,11 +170,8 @@ app.post("/api/posts", async (req, res) => {
   res.json(post);
 });
 
-/* ================= AUTH ================= */
-
 app.post("/api/auth/register", async (req, res) => {
   const { name, email, password } = req.body;
-
   const hashed = await bcrypt.hash(password, 10);
 
   const user = await User.create({
@@ -190,8 +187,10 @@ app.post("/api/auth/register", async (req, res) => {
 
 app.post("/api/auth/login", async (req, res) => {
   const user = await User.findOne({ email: req.body.email });
-  if (!user || !(await bcrypt.compare(req.body.password, user.password)))
+
+  if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
     return res.status(401).json({ message: "Invalid credentials" });
+  }
 
   res.json({ user });
 });
