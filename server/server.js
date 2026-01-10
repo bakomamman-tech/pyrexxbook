@@ -79,9 +79,9 @@ app.use(express.json());
 
 
 
-/* ================= SERVE REACT (VITE BUILD) ================= */
+/* ================= SERVE REACT (Render-safe) ================= */
 
-const clientPath = path.join(__dirname, "..", "vite-project", "dist");
+const clientPath = path.join(__dirname, "public");
 
 app.use(express.static(clientPath));
 
