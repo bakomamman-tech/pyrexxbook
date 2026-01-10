@@ -65,5 +65,5 @@ Author
 
 Stephen Daniel Kurah (Pyrexx)
 Full-Stack Developer
-Nigeria 🇳🇬
+Nigeria 🇳🇬.
 
