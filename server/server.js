@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -13,7 +14,7 @@ const server = http.createServer(app);
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://pyrexxbook-kurah.onrender.com"
+  "https://pyrexxbook.onrender.com"
 ];
 
 /* ================= SOCKET.IO ================= */
@@ -76,8 +77,16 @@ app.use(cors({
 
 app.use(express.json());
 
+
+
+/* ================= SERVE REACT ================= */
+
+const clientPath = path.join(__dirname, "../vite-project/dist");
+
+app.use(express.static(clientPath));
+
 app.get("/", (req, res) => {
-  res.send("PyrexxBook API is running");
+  res.sendFile(path.join(clientPath, "index.html"));
 });
 
 /* ================= DATABASE ================= */
@@ -85,6 +94,8 @@ app.get("/", (req, res) => {
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("MongoDB error:", err));
+
+
 
 /* ================= MODELS ================= */
 
@@ -126,6 +137,8 @@ const Message = mongoose.model("Message", new mongoose.Schema({
   time: String
 }));
 
+
+
 /* ================= USERS ================= */
 
 app.get("/api/users", async (req, res) => {
@@ -154,34 +167,6 @@ app.post("/api/posts", async (req, res) => {
     comments: []
   });
 
-  res.json(post);
-});
-
-app.post("/api/posts/like/:id", async (req, res) => {
-  const post = await Post.findById(req.params.id);
-  if (!post) return res.status(404).json({ message: "Post not found" });
-
-  if (post.likes.includes(req.body.userId)) {
-    post.likes = post.likes.filter(id => id !== req.body.userId);
-  } else {
-    post.likes.push(req.body.userId);
-  }
-
-  await post.save();
-  res.json(post);
-});
-
-app.post("/api/posts/comment/:id", async (req, res) => {
-  const post = await Post.findById(req.params.id);
-  if (!post) return res.status(404).json({ message: "Post not found" });
-
-  post.comments.push({
-    userId: req.body.userId,
-    text: req.body.text,
-    time: new Date().toLocaleString()
-  });
-
-  await post.save();
   res.json(post);
 });
 
