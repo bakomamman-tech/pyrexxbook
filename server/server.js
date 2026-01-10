@@ -9,15 +9,18 @@ const app = express();
 app.set("trust proxy", 1);
 const server = http.createServer(app);
 
+/* ================= ALLOWED ORIGINS ================= */
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://pyrexxbook-kurah.onrender.com"
+];
+
 /* ================= SOCKET.IO ================= */
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://pyrexxbook-kurah.onrender.com",
-      "https://pyrexxbook-kurah-backend.onrender.com"
-    ],
+    origin: allowedOrigins,
     credentials: true
   }
 });
@@ -67,11 +70,7 @@ io.on("connection", socket => {
 /* ================= MIDDLEWARE ================= */
 
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://pyrexxbook-kurah.onrender.com",
-    "https://pyrexxbook-kurah-backend.onrender.com"
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 
@@ -133,7 +132,7 @@ app.get("/api/users", async (req, res) => {
   res.json(await User.find().select("-password"));
 });
 
-/* ================= POSTS (🔥 FIXED) ================= */
+/* ================= POSTS ================= */
 
 app.get("/api/posts", async (req, res) => {
   const posts = await Post.find().sort({ _id: -1 });
@@ -210,101 +209,6 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(401).json({ message: "Invalid credentials" });
 
   res.json({ user });
-});
-
-/* ================= FRIEND REQUESTS ================= */
-
-app.post("/api/friends/request", async (req, res) => {
-  const { fromId, toId } = req.body;
-
-  const sender = await User.findById(fromId);
-  const receiver = await User.findById(toId);
-
-  if (!receiver.friendRequests.includes(fromId)) {
-    receiver.friendRequests.push(fromId);
-    await receiver.save();
-  }
-
-  const socketId = onlineUsers.get(toId);
-  if (socketId) {
-    io.to(socketId).emit("friendRequest", {
-      fromId,
-      name: sender.name,
-      avatar: sender.avatar
-    });
-  }
-
-  res.json({ success: true });
-});
-
-app.post("/api/friends/accept", async (req, res) => {
-  const { userId, requesterId } = req.body;
-
-  const user = await User.findById(userId);
-  const requester = await User.findById(requesterId);
-
-  user.friendRequests = user.friendRequests.filter(id => id !== requesterId);
-
-  if (!user.followers.includes(requesterId)) user.followers.push(requesterId);
-  if (!user.following.includes(requesterId)) user.following.push(requesterId);
-  if (!requester.followers.includes(userId)) requester.followers.push(userId);
-  if (!requester.following.includes(userId)) requester.following.push(userId);
-
-  await user.save();
-  await requester.save();
-
-  const socketId = onlineUsers.get(requesterId);
-  if (socketId) {
-    io.to(socketId).emit("friendAccepted", {
-      name: user.name
-    });
-  }
-
-  res.json({ success: true });
-});
-
-app.post("/api/friends/reject", async (req, res) => {
-  const { userId, requesterId } = req.body;
-  const user = await User.findById(userId);
-
-  user.friendRequests = user.friendRequests.filter(id => id !== requesterId);
-  await user.save();
-
-  res.json({ success: true });
-});
-
-/* ================= MESSENGER (Friends Only) ================= */
-
-app.post("/api/conversations", async (req, res) => {
-  const { senderId, receiverId } = req.body;
-
-  const sender = await User.findById(senderId);
-  const receiver = await User.findById(receiverId);
-
-  const isFriend =
-    sender.following.includes(receiverId) &&
-    receiver.following.includes(senderId);
-
-  if (!isFriend)
-    return res.status(403).json({ message: "Friends only" });
-
-  let convo = await Conversation.findOne({
-    members: { $all: [senderId, receiverId] }
-  });
-
-  if (!convo) {
-    convo = await Conversation.create({ members: [senderId, receiverId] });
-  }
-
-  res.json(convo);
-});
-
-app.get("/api/conversations/:userId", async (req, res) => {
-  res.json(await Conversation.find({ members: req.params.userId }));
-});
-
-app.get("/api/messages/:conversationId", async (req, res) => {
-  res.json(await Message.find({ conversationId: req.params.conversationId }));
 });
 
 /* ================= START ================= */
