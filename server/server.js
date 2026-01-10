@@ -79,13 +79,14 @@ app.use(express.json());
 
 
 
-/* ================= SERVE REACT (Render-safe) ================= */
+/* ================= SERVE REACT ================= */
 
 const clientPath = path.join(__dirname, "public");
 
 app.use(express.static(clientPath));
 
-app.get("*", (req, res) => {
+// Express 5 safe wildcard
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(clientPath, "index.html"));
 });
 
