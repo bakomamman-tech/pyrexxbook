@@ -10,30 +10,28 @@ export default function Messenger({ user, onClose }) {
   const [text, setText] = useState("");
   const [users, setUsers] = useState({});
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const bottomRef = useRef();
+  const bottomRef = useRef(null);
 
   /* ================= SOCKET ================= */
 
   useEffect(() => {
     if (!user?._id) return;
 
-    socket.connect();
+    if (!socket.connected) socket.connect();
+
     socket.emit("join", user._id);
 
-    socket.on("onlineUsers", (list) => {
-      setOnlineUsers(list || []);
+    socket.on("onlineUsers", list => {
+      setOnlineUsers(Array.isArray(list) ? list : []);
     });
 
-    socket.on("newMessage", (msg) => {
-      setMessages((prev) => {
-        if (msg.conversationId === active?._id) {
-          return [...prev, msg];
-        }
-        return prev;
-      });
+    socket.on("newMessage", msg => {
+      setMessages(prev =>
+        msg.conversationId === active?._id ? [...prev, msg] : prev
+      );
 
-      setConversations((prev) =>
-        prev.map((c) =>
+      setConversations(prev =>
+        prev.map(c =>
           c._id === msg.conversationId
             ? { ...c, lastMessage: msg.text }
             : c
@@ -51,10 +49,10 @@ export default function Messenger({ user, onClose }) {
 
   useEffect(() => {
     fetch(`${API_BASE}/users`)
-      .then((r) => r.json())
-      .then((list) => {
+      .then(r => r.json())
+      .then(list => {
         const map = {};
-        list.forEach((u) => (map[u._id] = u));
+        list.forEach(u => (map[u._id] = u));
         setUsers(map);
       })
       .catch(() => {});
@@ -66,9 +64,9 @@ export default function Messenger({ user, onClose }) {
     if (!user?._id) return;
 
     fetch(`${API_BASE}/conversations/${user._id}`)
-      .then((r) => r.json())
-      .then(setConversations)
-      .catch(() => {});
+      .then(r => r.json())
+      .then(data => setConversations(Array.isArray(data) ? data : []))
+      .catch(() => setConversations([]));
   }, [user?._id]);
 
   /* ================= LOAD MESSAGES ================= */
@@ -77,9 +75,9 @@ export default function Messenger({ user, onClose }) {
     if (!active?._id) return;
 
     fetch(`${API_BASE}/messages/${active._id}`)
-      .then((r) => r.json())
-      .then(setMessages)
-      .catch(() => {});
+      .then(r => r.json())
+      .then(data => setMessages(Array.isArray(data) ? data : []))
+      .catch(() => setMessages([]));
   }, [active?._id]);
 
   /* ================= AUTOSCROLL ================= */
@@ -90,18 +88,19 @@ export default function Messenger({ user, onClose }) {
 
   /* ================= HELPERS ================= */
 
-  const getFriend = (convo) => {
-    const id = convo.members.find((m) => m !== user._id);
-    return users[id];
+  const getFriend = convo => {
+    const id = convo?.members?.find(m => m !== user._id);
+    return users[id] || null;
   };
 
-  const isOnline = (id) => onlineUsers.includes(id);
+  const isOnline = id => onlineUsers.includes(id);
 
-  const avatar = (u) => {
-    if (!u?.avatar)
+  const avatar = u => {
+    if (!u?.avatar) {
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(
         u?.name || "User"
       )}`;
+    }
 
     if (u.avatar.startsWith("http")) return u.avatar;
 
@@ -113,13 +112,13 @@ export default function Messenger({ user, onClose }) {
   const send = () => {
     if (!text.trim() || !active) return;
 
-    const receiverId = active.members.find((m) => m !== user._id);
+    const receiverId = active.members.find(m => m !== user._id);
 
     socket.emit("sendMessage", {
       conversationId: active._id,
       senderId: user._id,
       receiverId,
-      text
+      text: text.trim()
     });
 
     setText("");
@@ -137,7 +136,7 @@ export default function Messenger({ user, onClose }) {
       <div className="messenger-body">
         {/* LEFT – CONVERSATIONS */}
         <div className="messenger-left">
-          {conversations.map((c) => {
+          {conversations.map(c => {
             const friend = getFriend(c);
 
             return (
@@ -191,8 +190,8 @@ export default function Messenger({ user, onClose }) {
                 <input
                   placeholder="Type a message..."
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && send()}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && send()}
                 />
                 <button className="messenger-btn" onClick={send}>
                   ⚡
