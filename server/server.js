@@ -77,28 +77,11 @@ app.use(cors({
 
 app.use(express.json());
 
-
-
-/* ================= SERVE REACT ================= */
-
-const clientPath = path.join(__dirname, "public");
-
-app.use(express.static(clientPath));
-
-// Express 5 safe wildcard
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(clientPath, "index.html"));
-});
-
-
-
 /* ================= DATABASE ================= */
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("MongoDB error:", err));
-
-
 
 /* ================= MODELS ================= */
 
@@ -139,8 +122,6 @@ const Message = mongoose.model("Message", new mongoose.Schema({
   text: String,
   time: String
 }));
-
-
 
 /* ================= API ================= */
 
@@ -194,6 +175,16 @@ app.post("/api/auth/login", async (req, res) => {
   }
 
   res.json({ user });
+});
+
+/* ================= SERVE REACT (LAST) ================= */
+
+const clientPath = path.join(__dirname, "public");
+app.use(express.static(clientPath));
+
+// Express 5 safe wildcard — must be LAST
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(clientPath, "index.html"));
 });
 
 /* ================= START ================= */
