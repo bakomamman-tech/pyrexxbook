@@ -7,7 +7,6 @@ function Navbar() {
   const location = useLocation();
   const [user, setUser] = useState(null);
 
-  // Load user when component mounts and when localStorage changes
   useEffect(() => {
     const loadUser = () => {
       try {
@@ -20,7 +19,6 @@ function Navbar() {
 
     loadUser();
     window.addEventListener("storage", loadUser);
-
     return () => window.removeEventListener("storage", loadUser);
   }, []);
 
@@ -28,9 +26,13 @@ function Navbar() {
 
   const logout = () => {
     localStorage.removeItem("user");
-    setUser(null); // force UI update
+    setUser(null);
     navigate("/login");
   };
+
+  const avatarUrl = user?.avatar
+    ? `https://pyrexxbook.onrender.com${user.avatar}`
+    : `https://pyrexxbook.onrender.com/uploads/default.png`;
 
   return (
     <div className="navbar">
@@ -45,30 +47,10 @@ function Navbar() {
 
       {/* CENTER */}
       <div className="nav-center">
-        <div
-          className={`nav-icon ${isActive("/") ? "active" : ""}`}
-          onClick={() => navigate("/")}
-        >
-          🏠
-        </div>
-        <div
-          className={`nav-icon ${isActive("/videos") ? "active" : ""}`}
-          onClick={() => navigate("/videos")}
-        >
-          🎥
-        </div>
-        <div
-          className={`nav-icon ${isActive("/groups") ? "active" : ""}`}
-          onClick={() => navigate("/groups")}
-        >
-          👥
-        </div>
-        <div
-          className={`nav-icon ${isActive("/market") ? "active" : ""}`}
-          onClick={() => navigate("/market")}
-        >
-          🛒
-        </div>
+        <div className={`nav-icon ${isActive("/") ? "active" : ""}`} onClick={() => navigate("/")}>🏠</div>
+        <div className={`nav-icon ${isActive("/videos") ? "active" : ""}`} onClick={() => navigate("/videos")}>🎥</div>
+        <div className={`nav-icon ${isActive("/groups") ? "active" : ""}`} onClick={() => navigate("/groups")}>👥</div>
+        <div className={`nav-icon ${isActive("/market") ? "active" : ""}`} onClick={() => navigate("/market")}>🛒</div>
       </div>
 
       {/* RIGHT */}
@@ -79,18 +61,8 @@ function Navbar() {
 
         {user ? (
           <>
-            <div
-              className="profile"
-              onClick={() => navigate(`/profile/${user.username}`)}
-            >
-              <img
-                src={
-                  user.avatar
-                    ? `https://pyrexxbook-kurah-backend.onrender.com${user.avatar}`
-                    : `https://pyrexxbook-kurah-backend.onrender.com/uploads/default.png`
-                }
-                alt="profile"
-              />
+            <div className="profile" onClick={() => navigate(`/profile/${user.username}`)}>
+              <img src={avatarUrl} alt="profile" />
             </div>
 
             <button
@@ -112,9 +84,7 @@ function Navbar() {
         ) : (
           <>
             <button onClick={() => navigate("/login")}>Login</button>
-            <button onClick={() => navigate("/register")}>
-              Create Account
-            </button>
+            <button onClick={() => navigate("/register")}>Create Account</button>
           </>
         )}
       </div>
