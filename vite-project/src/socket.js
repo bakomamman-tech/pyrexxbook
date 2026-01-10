@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const socket = io("https://pyrexxbook-kurah-backend.onrender.com", {
+const socket = io("https://pyrexxbook.onrender.com", {
   transports: ["websocket"],
   withCredentials: true
 });
