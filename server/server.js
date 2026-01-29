@@ -9,12 +9,17 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
 require("dotenv").config();
-app.get("/", (req, res) => {
-  res.send("✅ PyrexxBook Backend is running");
-});
 
-const app = express();
+const express = require("express");
+const http = require("http");
+
+const app = express();              // ✅ app created first
 const server = http.createServer(app);
+
+// ✅ routes AFTER app is created
+app.get("/", (req, res) => {
+  res.send("Backend running ✅");
+});
 
 /* ================= HELPERS ================= */
 
@@ -742,8 +747,7 @@ const indexHtmlPath = path.join(FRONTEND_DIST, "index.html");
 
 app.use("/", express.static(FRONTEND_DIST));
 
-app.get("/*", (req, res) => {
-
+app.get("*", (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
   }
