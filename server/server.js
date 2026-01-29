@@ -8,18 +8,11 @@ const http = require("http");
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
+const nodemailer = require("nodemailer");
 require("dotenv").config();
 
-const express = require("express");
-const http = require("http");
-
-const app = express();              // ✅ app created first
+const app = express();
 const server = http.createServer(app);
-
-// ✅ routes AFTER app is created
-app.get("/", (req, res) => {
-  res.send("Backend running ✅");
-});
 
 /* ================= HELPERS ================= */
 
@@ -82,6 +75,127 @@ const io = new Server(server, {
 
 // Online users: userId -> socketId
 const onlineUsers = new Map();
+
+/* ================= MODELS ================= */
+
+const UserSchema = new mongoose.Schema(
+  {
+    name: String,
+    username: { type: String, unique: true, index: true },
+    email: { type: String, unique: true, index: true },
+    password: String,
+    avatar: String,
+    cover: String,
+    bio: String,
+    joined: String,
+    followers: [String],
+    following: [String],
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: null },
+    refreshToken: { type: String, default: null }
+  },
+  { timestamps: true }
+);
+
+const User = mongoose.model("User", UserSchema);
+
+const Post = mongoose.model(
+  "Post",
+  new mongoose.Schema(
+    {
+      userId: String,
+      name: String,
+      username: String,
+      avatar: String,
+      text: String,
+      time: String,
+      likes: [String],
+      comments: [{ userId: String, text: String, time: String }]
+    },
+    { timestamps: true }
+  )
+);
+
+const StorySchema = new mongoose.Schema({
+  userId: String,
+  name: String,
+  avatar: String,
+  image: String,
+  createdAt: { type: Date, default: Date.now },
+  seenBy: [
+    {
+      userId: String,
+      name: String,
+      time: String
+    }
+  ]
+});
+
+StorySchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+const Story = mongoose.model("Story", StorySchema);
+
+const Conversation = mongoose.model(
+  "Conversation",
+  new mongoose.Schema(
+    {
+      members: [String],
+      lastMessage: String,
+      updatedAt: { type: Date, default: Date.now }
+    },
+    { timestamps: true }
+  )
+);
+
+const Message = mongoose.model(
+  "Message",
+  new mongoose.Schema(
+    {
+      conversationId: String,
+      senderId: String,
+      receiverId: String,
+      text: String,
+      time: String,
+      status: {
+        type: String,
+        enum: ["sent", "delivered", "seen"],
+        default: "sent"
+      },
+      deliveredAt: { type: Date, default: null },
+      seenAt: { type: Date, default: null }
+    },
+    { timestamps: true }
+  )
+);
+
+// ✅ OTP Model
+const OtpSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, index: true },
+    otpHash: { type: String, required: true },
+    expiresAt: { type: Date, required: true }
+  },
+  { timestamps: true }
+);
+
+// ✅ auto-delete expired OTP
+OtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+const OTP = mongoose.model("OTP", OtpSchema);
+
+/* ✅ helper for online users meta */
+async function getOnlineMeta() {
+  const users = await User.find({})
+    .select("_id isOnline lastSeen username name avatar")
+    .lean();
+
+  return users.map((u) => ({
+    userId: String(u._id),
+    isOnline: !!u.isOnline,
+    lastSeen: u.lastSeen,
+    username: u.username,
+    name: u.name,
+    avatar: u.avatar
+  }));
+}
 
 io.on("connection", (socket) => {
   console.log("✅ Socket connected:", socket.id);
@@ -198,7 +312,6 @@ io.on("connection", (socket) => {
       if (!msg) return;
 
       if (msg.status !== "seen") {
-        // ✅ Ensure deliveredAt exists too (optional but correct)
         if (!msg.deliveredAt) msg.deliveredAt = new Date();
 
         msg.status = "seen";
@@ -237,22 +350,7 @@ io.on("connection", (socket) => {
   });
 });
 
-/* ✅ helper for online users meta */
-async function getOnlineMeta() {
-  const users = await User.find({})
-    .select("_id isOnline lastSeen username name avatar")
-    .lean();
-
-  return users.map((u) => ({
-    userId: String(u._id),
-    isOnline: !!u.isOnline,
-    lastSeen: u.lastSeen,
-    username: u.username,
-    name: u.name,
-    avatar: u.avatar
-  }));
-}
-const nodemailer = require("nodemailer");
+/* ================= MAILER (OTP) ================= */
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -301,109 +399,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/* ================= MODELS ================= */
-
-const UserSchema = new mongoose.Schema(
-  {
-    name: String,
-    username: { type: String, unique: true, index: true },
-    email: { type: String, unique: true, index: true },
-    password: String,
-    avatar: String,
-    cover: String,
-    bio: String,
-    joined: String,
-    followers: [String],
-    following: [String],
-    isOnline: { type: Boolean, default: false },
-    lastSeen: { type: Date, default: null },
-    refreshToken: { type: String, default: null }
-  },
-  { timestamps: true }
-);
-
-const User = mongoose.model("User", UserSchema);
-
-const Post = mongoose.model(
-  "Post",
-  new mongoose.Schema(
-    {
-      userId: String,
-      name: String,
-      username: String,
-      avatar: String,
-      text: String,
-      time: String,
-      likes: [String],
-      comments: [{ userId: String, text: String, time: String }]
-    },
-    { timestamps: true }
-  )
-);
-
-const StorySchema = new mongoose.Schema({
-  userId: String,
-  name: String,
-  avatar: String,
-  image: String,
-  createdAt: { type: Date, default: Date.now },
-  seenBy: [
-    {
-      userId: String,
-      name: String,
-      time: String
-    }
-  ]
-});
-
-StorySchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
-const Story = mongoose.model("Story", StorySchema);
-
-const Conversation = mongoose.model(
-  "Conversation",
-  new mongoose.Schema(
-    {
-      members: [String],
-      lastMessage: String,
-      updatedAt: { type: Date, default: Date.now }
-    },
-    { timestamps: true }
-  )
-);
-
-const Message = mongoose.model(
-  "Message",
-  new mongoose.Schema(
-    {
-      conversationId: String,
-      senderId: String,
-      receiverId: String,
-      text: String,
-      time: String,
-      status: {
-        type: String,
-        enum: ["sent", "delivered", "seen"],
-        default: "sent"
-      },
-      deliveredAt: { type: Date, default: null },
-      seenAt: { type: Date, default: null }
-    },
-    { timestamps: true }
-  )
-);
-const OtpSchema = new mongoose.Schema(
-  {
-    email: { type: String, required: true, index: true },
-    otpHash: { type: String, required: true },
-    expiresAt: { type: Date, required: true }
-  },
-  { timestamps: true }
-);
-
-OtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
-const OTP = mongoose.model("OTP", OtpSchema);
-
 /* ================= HEALTH ================= */
 
 app.get("/api/health", (req, res) => {
@@ -426,44 +421,39 @@ async function generateUniqueUsername(name) {
 
   return username;
 }
+
+// ✅ SEND OTP
 app.post("/api/auth/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
-
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    // ✅ Generate OTP
-    const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6 digits
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpHash = await bcrypt.hash(otp, 10);
 
-    // ✅ Save/replace OTP
     await OTP.deleteMany({ email });
 
     await OTP.create({
       email,
       otpHash,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 mins
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     });
 
-    // ✅ Send Email
     await transporter.sendMail({
       from: `"PyrexxBook" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your PyrexxBook OTP Code",
-      html: `
-        <h2>PyrexxBook Verification</h2>
-        <p>Your OTP is:</p>
-        <h1>${otp}</h1>
-        <p>This OTP expires in 5 minutes.</p>
-      `
+      html: `<h2>Your OTP is: <b>${otp}</b></h2><p>Expires in 5 minutes.</p>`
     });
 
     res.json({ success: true, message: "OTP sent successfully" });
   } catch (err) {
-    console.log("❌ OTP send error:", err.message);
+    console.log("❌ send-otp error:", err.message);
     res.status(500).json({ message: "Failed to send OTP", error: err.message });
   }
 });
+
+// ✅ VERIFY OTP
 app.post("/api/auth/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -472,7 +462,8 @@ app.post("/api/auth/verify-otp", async (req, res) => {
       return res.status(400).json({ message: "Email and OTP are required" });
 
     const record = await OTP.findOne({ email });
-    if (!record) return res.status(400).json({ message: "OTP expired or invalid" });
+    if (!record)
+      return res.status(400).json({ message: "OTP expired or invalid" });
 
     if (record.expiresAt < new Date()) {
       await OTP.deleteMany({ email });
@@ -482,12 +473,13 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     const ok = await bcrypt.compare(String(otp), record.otpHash);
     if (!ok) return res.status(400).json({ message: "Wrong OTP" });
 
-    // ✅ clear OTP after success
     await OTP.deleteMany({ email });
 
     res.json({ success: true, message: "OTP verified successfully" });
   } catch (err) {
-    res.status(500).json({ message: "OTP verification failed", error: err.message });
+    res
+      .status(500)
+      .json({ message: "OTP verification failed", error: err.message });
   }
 });
 
@@ -630,32 +622,26 @@ app.post("/api/posts", authMiddleware, async (req, res) => {
 
 /* ================= STORIES ================= */
 
-app.post(
-  "/api/stories",
-  authMiddleware,
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      if (!req.file)
-        return res.status(400).json({ message: "Image is required" });
+app.post("/api/stories", authMiddleware, upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "Image is required" });
 
-      const user = await User.findById(req.user.id);
-      if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-      const story = await Story.create({
-        userId: user._id,
-        name: user.name,
-        avatar: user.avatar,
-        image: "/uploads/" + req.file.filename,
-        seenBy: []
-      });
+    const story = await Story.create({
+      userId: user._id,
+      name: user.name,
+      avatar: user.avatar,
+      image: "/uploads/" + req.file.filename,
+      seenBy: []
+    });
 
-      res.json(story);
-    } catch (err) {
-      res.status(500).json({ message: "Story upload failed" });
-    }
+    res.json(story);
+  } catch (err) {
+    res.status(500).json({ message: "Story upload failed" });
   }
-);
+});
 
 app.get("/api/stories", async (req, res) => {
   const stories = await Story.find().sort({ createdAt: -1 });
@@ -747,7 +733,8 @@ const indexHtmlPath = path.join(FRONTEND_DIST, "index.html");
 
 app.use("/", express.static(FRONTEND_DIST));
 
-app.get("*", (req, res) => {
+// ✅ FIXED wildcard route for Render (NO app.get("*"))
+app.get("/*", (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
   }
