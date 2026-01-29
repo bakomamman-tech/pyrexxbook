@@ -339,14 +339,19 @@ io.on("connection", (socket) => {
   });
 });
 
-/* ================= MAILER (OTP) ================= */
+/* ================= MAILER (OTP) ✅ FIXED ================= */
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  }
+  },
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000
 });
 
 /* ================= CORS ================= */
@@ -427,6 +432,8 @@ app.post("/api/auth/send-otp", async (req, res) => {
       otpHash,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     });
+
+    console.log("📨 Sending OTP email to:", email);
 
     await transporter.sendMail({
       from: `"PyrexxBook" <${process.env.EMAIL_USER}>`,
@@ -728,10 +735,6 @@ const indexHtmlPath = path.join(FRONTEND_DIST, "index.html");
 
 app.use("/", express.static(FRONTEND_DIST));
 
-/**
- * ✅ FINAL FALLBACK (NO wildcard patterns)
- * This fixes Render crash: path-to-regexp error on "*" and "/*"
- */
 app.use((req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
