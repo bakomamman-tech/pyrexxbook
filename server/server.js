@@ -9,6 +9,9 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
 require("dotenv").config();
+app.get("/", (req, res) => {
+  res.send("✅ PyrexxBook Backend is running");
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -739,7 +742,8 @@ const indexHtmlPath = path.join(FRONTEND_DIST, "index.html");
 
 app.use("/", express.static(FRONTEND_DIST));
 
-app.get("*", (req, res) => {
+app.get("/*", (req, res) => {
+
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
   }
