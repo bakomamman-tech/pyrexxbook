@@ -1,5 +1,14 @@
 {
+  "name": "pyrexxbook",
+  "private": true,
+  "version": "1.0.0",
   "dependencies": {
+    "dotenv": "^17.2.3",
+    "jsonwebtoken": "^9.0.3",
     "socket.io-client": "^4.8.3"
+  },
+  "scripts": {
+    "build": "npm install --prefix vite-project && npm run build --prefix vite-project && rm -rf server/public/dist && cp -r vite-project/dist server/public/dist",
+    "start": "npm install --prefix server && npm start --prefix server"
   }
 }
