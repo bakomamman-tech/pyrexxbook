@@ -200,7 +200,6 @@ async function getOnlineMeta() {
 io.on("connection", (socket) => {
   console.log("✅ Socket connected:", socket.id);
 
-  // ✅ Join user system (online tracking + lastSeen)
   socket.on("join", async (userId) => {
     try {
       socket.userId = userId;
@@ -218,7 +217,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ✅ Join conversation room
   socket.on("joinConversation", (conversationId) => {
     socket.join(conversationId);
   });
@@ -227,7 +225,6 @@ io.on("connection", (socket) => {
     socket.leave(conversationId);
   });
 
-  /* ✅ Typing feature */
   socket.on("typing", ({ conversationId, userId }) => {
     socket.to(conversationId).emit("typing", { conversationId, userId });
   });
@@ -236,7 +233,6 @@ io.on("connection", (socket) => {
     socket.to(conversationId).emit("stopTyping", { conversationId, userId });
   });
 
-  /* ✅ Send message: SENT -> DELIVERED (if receiver online) */
   socket.on("sendMessage", async (data) => {
     try {
       const { conversationId, senderId, receiverId, text } = data;
@@ -245,7 +241,6 @@ io.on("connection", (socket) => {
       let status = "sent";
       let deliveredAt = null;
 
-      // ✅ if receiver is online => delivered immediately
       if (onlineUsers.has(receiverId)) {
         status = "delivered";
         deliveredAt = new Date();
@@ -266,10 +261,8 @@ io.on("connection", (socket) => {
         updatedAt: new Date()
       });
 
-      // ✅ Send in room
       io.to(conversationId).emit("newMessage", msg);
 
-      // ✅ Direct notify receiver if online
       const receiverSocket = onlineUsers.get(receiverId);
       if (receiverSocket) {
         io.to(receiverSocket).emit("newMessage", msg);
@@ -279,16 +272,13 @@ io.on("connection", (socket) => {
     }
   });
 
-  /* ✅ DELIVERED ACK */
   socket.on("messageDelivered", async ({ messageId, conversationId }) => {
     try {
       const msg = await Message.findById(messageId);
       if (!msg) return;
 
-      // ✅ If already seen, do nothing
       if (msg.status === "seen") return;
 
-      // ✅ Update to delivered only if not delivered yet
       if (msg.status !== "delivered") {
         msg.status = "delivered";
         msg.deliveredAt = msg.deliveredAt || new Date();
@@ -305,7 +295,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  /* ✅ SEEN ACK */
   socket.on("messageSeen", async ({ messageId, conversationId }) => {
     try {
       const msg = await Message.findById(messageId);
@@ -477,7 +466,7 @@ app.post("/api/auth/verify-otp", async (req, res) => {
 
     res.json({ success: true, message: "OTP verified successfully" });
   } catch (err) {
-    res
+    return res
       .status(500)
       .json({ message: "OTP verification failed", error: err.message });
   }
@@ -622,26 +611,32 @@ app.post("/api/posts", authMiddleware, async (req, res) => {
 
 /* ================= STORIES ================= */
 
-app.post("/api/stories", authMiddleware, upload.single("image"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: "Image is required" });
+app.post(
+  "/api/stories",
+  authMiddleware,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      if (!req.file)
+        return res.status(400).json({ message: "Image is required" });
 
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+      const user = await User.findById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
 
-    const story = await Story.create({
-      userId: user._id,
-      name: user.name,
-      avatar: user.avatar,
-      image: "/uploads/" + req.file.filename,
-      seenBy: []
-    });
+      const story = await Story.create({
+        userId: user._id,
+        name: user.name,
+        avatar: user.avatar,
+        image: "/uploads/" + req.file.filename,
+        seenBy: []
+      });
 
-    res.json(story);
-  } catch (err) {
-    res.status(500).json({ message: "Story upload failed" });
+      res.json(story);
+    } catch (err) {
+      res.status(500).json({ message: "Story upload failed" });
+    }
   }
-});
+);
 
 app.get("/api/stories", async (req, res) => {
   const stories = await Story.find().sort({ createdAt: -1 });
@@ -733,11 +728,15 @@ const indexHtmlPath = path.join(FRONTEND_DIST, "index.html");
 
 app.use("/", express.static(FRONTEND_DIST));
 
-// ✅ FIXED wildcard route for Render (NO app.get("*"))
-app.get("/*", (req, res) => {
+/**
+ * ✅ FINAL FALLBACK (NO wildcard patterns)
+ * This fixes Render crash: path-to-regexp error on "*" and "/*"
+ */
+app.use((req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
   }
+
   if (req.path.startsWith("/uploads")) {
     return res.status(404).send("Not found");
   }
