@@ -1,171 +1,213 @@
-import { useEffect, useState } from "react";
-import ProfileCard from "./components/ProfileCard";
+import { useEffect, useMemo, useState } from "react";
+import Messenger from "./components/Messenger";
 import StoryBar from "./components/StoryBar";
-import ImageModal from "./components/ImageModal";
-import API_BASE from "./utils/api";
+import { apiFetch, authFetch, avatarUrl } from "./utils/api";
 import "./Feed.css";
 
-export default function Feed() {
+function formatTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
+
+export default function Feed({ user }) {
   const [posts, setPosts] = useState([]);
   const [text, setText] = useState("");
   const [commentText, setCommentText] = useState({});
-  const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState("");
+  const [messengerOpen, setMessengerOpen] = useState(false);
 
-  const user = (() => {
+  const totalEngagement = useMemo(
+    () =>
+      posts.reduce(
+        (acc, post) => acc + (post.likes?.length || 0) + (post.comments?.length || 0),
+        0
+      ),
+    [posts]
+  );
+
+  const loadPosts = async () => {
     try {
-      return JSON.parse(localStorage.getItem("user"));
-    } catch {
-      return null;
+      setError("");
+      const data = await apiFetch("/api/posts");
+      setPosts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || "Failed to load feed");
+    } finally {
+      setLoading(false);
     }
-  })();
-
-  const avatarUrl = (name, avatar) => {
-    if (!avatar)
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        name
-      )}&background=C3005E&color=fff`;
-    if (avatar.startsWith("http")) return avatar;
-    return `${API_BASE}${avatar}`;
   };
 
-  /* 🔥 Load feed (React 19 safe) */
   useEffect(() => {
-    if (!user) return;
+    loadPosts();
+  }, []);
 
-    let cancelled = false;
+  const createPost = async (event) => {
+    event.preventDefault();
+    const content = text.trim();
+    if (!content || posting) return;
 
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/posts`);
-        const data = await res.json();
-        if (!cancelled) {
-          setPosts([...data]);   // force React update
-          setLoading(false);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    })();
+    setPosting(true);
+    try {
+      const created = await authFetch("/api/posts", {
+        method: "POST",
+        body: { text: content }
+      });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
-  const reload = async () => {
-    const res = await fetch(`${API_BASE}/api/posts`);
-    const data = await res.json();
-    setPosts([...data]);
+      setPosts((prev) => [created, ...prev]);
+      setText("");
+    } catch (err) {
+      setError(err.message || "Failed to create post");
+    } finally {
+      setPosting(false);
+    }
   };
 
-  const createPost = async () => {
-    if (!text.trim()) return;
-
-    await fetch(`${API_BASE}/api/posts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: user.email,
-        text
-      })
-    });
-
-    setText("");
-    await reload();
+  const updatePost = (nextPost) => {
+    setPosts((prev) => prev.map((post) => (post._id === nextPost._id ? nextPost : post)));
   };
 
-  const toggleLike = async postId => {
-    await fetch(`${API_BASE}/api/posts/like/${postId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user._id })
-    });
-
-    await reload();
+  const toggleLike = async (postId) => {
+    try {
+      const nextPost = await authFetch(`/api/posts/like/${postId}`, {
+        method: "POST"
+      });
+      updatePost(nextPost);
+    } catch (err) {
+      setError(err.message || "Failed to update like");
+    }
   };
 
-  const addComment = async postId => {
-    if (!commentText[postId]) return;
+  const addComment = async (postId) => {
+    const value = (commentText[postId] || "").trim();
+    if (!value) return;
 
-    await fetch(`${API_BASE}/api/posts/comment/${postId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user._id,
-        text: commentText[postId]
-      })
-    });
-
-    setCommentText({ ...commentText, [postId]: "" });
-    await reload();
+    try {
+      const nextPost = await authFetch(`/api/posts/comment/${postId}`, {
+        method: "POST",
+        body: { text: value }
+      });
+      updatePost(nextPost);
+      setCommentText((prev) => ({ ...prev, [postId]: "" }));
+    } catch (err) {
+      setError(err.message || "Failed to add comment");
+    }
   };
 
-  if (!user) return <div style={{ padding: 20 }}>Please log in</div>;
-  if (loading) return <div style={{ padding: 20 }}>Loading feed…</div>;
+  if (!user) {
+    return null;
+  }
 
   return (
-    <div className="feed-container">
-      <ProfileCard user={user} />
+    <div className="feed">
+      <section className="feed-hero">
+        <div>
+          <h1>Good to see you, {user.name.split(" ")[0]}.</h1>
+          <p>Share updates that matter and build meaningful conversations.</p>
+        </div>
+        <div className="feed-metrics">
+          <strong>{posts.length}</strong>
+          <span>Posts in feed</span>
+          <strong>{totalEngagement}</strong>
+          <span>Total engagement</span>
+        </div>
+      </section>
+
       <StoryBar user={user} />
 
-      <div className="create-post">
-        <img src={avatarUrl(user.name, user.avatar)} alt="" />
+      <form className="composer" onSubmit={createPost}>
+        <img src={avatarUrl(user)} alt={user.name} />
         <textarea
-          placeholder={`What's on your mind, ${user.name}?`}
+          placeholder={`What's your update, ${user.name.split(" ")[0]}?`}
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={(event) => setText(event.target.value)}
+          maxLength={1500}
         />
-        <button onClick={createPost}>Post</button>
-      </div>
+        <button type="submit" disabled={posting}>
+          {posting ? "Publishing..." : "Publish"}
+        </button>
+      </form>
 
-      {posts.map(post => (
-        <div className="post" key={post._id}>
-          <div className="post-header">
-            <img src={avatarUrl(post.name, post.avatar)} alt="" />
-            <div>
-              <div className="post-name">{post.name}</div>
-              <div className="post-time">{post.time}</div>
-            </div>
-          </div>
+      {error && <p className="feed-error">{error}</p>}
 
-          <div className="post-text">{post.text}</div>
+      {loading ? (
+        <p className="feed-empty">Loading feed...</p>
+      ) : posts.length === 0 ? (
+        <p className="feed-empty">No posts yet. Be the first to publish.</p>
+      ) : (
+        posts.map((post) => {
+          const liked = post.likes?.includes(user._id);
+          return (
+            <article className="post" key={post._id}>
+              <header className="post-header">
+                <img src={avatarUrl(post)} alt={post.name} />
+                <div>
+                  <strong>{post.name}</strong>
+                  <p>@{post.username}</p>
+                  <time>{formatTime(post.time || post.createdAt)}</time>
+                </div>
+              </header>
 
-          <div className="post-actions">
-            <button onClick={() => toggleLike(post._id)}>
-              {post.likes?.includes(user._id) ? "❤️" : "🤍"}{" "}
-              {post.likes?.length || 0}
-            </button>
-          </div>
+              <p className="post-text">{post.text}</p>
 
-          <div className="comments">
-            {post.comments?.map((c, i) => (
-              <div key={i} className="comment">
-                <strong>{c.userId === user._id ? "You" : "User"}:</strong>{" "}
-                {c.text}
+              <div className="post-actions">
+                <button type="button" onClick={() => toggleLike(post._id)}>
+                  {liked ? "Unlike" : "Like"} · {post.likes?.length || 0}
+                </button>
+                <span>{post.comments?.length || 0} comments</span>
               </div>
-            ))}
 
-            <div className="comment-box">
-              <input
-                placeholder="Write a comment..."
-                value={commentText[post._id] || ""}
-                onChange={e =>
-                  setCommentText({ ...commentText, [post._id]: e.target.value })
-                }
-              />
-              <button onClick={() => addComment(post._id)}>Post</button>
-            </div>
-          </div>
-        </div>
-      ))}
+              <div className="comments">
+                {post.comments?.map((comment, index) => (
+                  <div className="comment" key={`${post._id}-${index}`}>
+                    <strong>{comment.name || "User"}</strong>
+                    <p>{comment.text}</p>
+                    <small>{formatTime(comment.time)}</small>
+                  </div>
+                ))}
 
-      {selectedImage && (
-        <ImageModal
-          src={selectedImage}
-          onClose={() => setSelectedImage(null)}
-        />
+                <div className="comment-box">
+                  <input
+                    value={commentText[post._id] || ""}
+                    placeholder="Write a comment..."
+                    onChange={(event) =>
+                      setCommentText((prev) => ({
+                        ...prev,
+                        [post._id]: event.target.value
+                      }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addComment(post._id);
+                      }
+                    }}
+                  />
+                  <button type="button" onClick={() => addComment(post._id)}>
+                    Reply
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
+        })
       )}
+
+      <button
+        type="button"
+        className="messenger-fab"
+        onClick={() => setMessengerOpen((prev) => !prev)}
+      >
+        Chat
+      </button>
+
+      {messengerOpen && <Messenger user={user} onClose={() => setMessengerOpen(false)} />}
     </div>
   );
 }

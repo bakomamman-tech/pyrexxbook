@@ -1,69 +1,55 @@
 import { useState } from "react";
-import API_BASE from "../utils/api";
+import { authFetch, avatarUrl, getStoredUser, storeSession } from "../utils/api";
 import "./ProfileCard.css";
 
-function ProfileCard({ user }) {
-  const [tab, setTab] = useState("posts");
+export default function ProfileCard({ user }) {
   const [profile, setProfile] = useState(user);
-  const [logged, setLogged] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user"));
-    } catch {
-      return null;
-    }
-  });
+  const [viewer, setViewer] = useState(() => getStoredUser());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  if (!profile || !logged) {
-    return <div style={{ padding: 20 }}>Loading profile…</div>;
+  if (!profile || !viewer) {
+    return <div className="profile-content">Profile unavailable.</div>;
   }
 
-  const isFollowing = logged.following?.includes(profile._id);
-  const isFriend =
-    isFollowing && profile.followers?.includes(logged._id);
+  const isSelf = String(viewer._id) === String(profile._id);
+  const isFollowing = viewer.following?.includes(profile._id);
 
-  const follow = async () => {
-    const res = await fetch(
-      `${API_BASE}/api/users/follow/${profile._id}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: logged._id })
-      }
-    );
+  const toggleFollow = async () => {
+    if (loading || isSelf) return;
+    setLoading(true);
+    setError("");
 
-    const data = await res.json();
+    try {
+      const payload = await authFetch(`/api/users/follow/${profile._id}`, {
+        method: "POST"
+      });
 
-    // Update viewed profile
-    setProfile(prev => ({
-      ...prev,
-      followers: data.followers
-    }));
+      const nextViewer = {
+        ...viewer,
+        following: payload.following || viewer.following || []
+      };
 
-    // Update logged-in user safely
-    const updatedLogged = {
-      ...logged,
-      following: data.following
-    };
-
-    setLogged(updatedLogged);
-    localStorage.setItem("user", JSON.stringify(updatedLogged));
+      setViewer(nextViewer);
+      setProfile((prev) => ({
+        ...prev,
+        followers: payload.followers || prev.followers || []
+      }));
+      storeSession({ user: nextViewer });
+    } catch (err) {
+      setError(err.message || "Failed to update follow status");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="profile-page">
+    <section className="profile-page">
       <div className="profile-header">
-        <img
-          className="cover"
-          src={`${API_BASE}${profile.cover || "/uploads/cover-default.jpg"}`}
-          alt="cover"
-        />
+        <img className="cover" src={avatarUrl({ avatar: profile.cover, name: profile.name })} alt="" />
 
         <div className="profile-info">
-          <img
-            className="avatar"
-            src={`${API_BASE}${profile.avatar || "/uploads/default.png"}`}
-            alt="avatar"
-          />
+          <img className="avatar" src={avatarUrl(profile)} alt={profile.name} />
 
           <div>
             <h2>{profile.name}</h2>
@@ -71,35 +57,15 @@ function ProfileCard({ user }) {
             <p>{profile.followers?.length || 0} followers</p>
           </div>
 
-          {logged._id !== profile._id && (
-            <button className="follow-btn" onClick={follow}>
-              {isFriend
-                ? "Friends"
-                : isFollowing
-                ? "Following"
-                : "Follow"}
+          {!isSelf && (
+            <button className="follow-btn" onClick={toggleFollow} disabled={loading}>
+              {loading ? "Updating..." : isFollowing ? "Following" : "Follow"}
             </button>
           )}
         </div>
       </div>
 
-      <div className="profile-tabs">
-        <span onClick={() => setTab("posts")} className={tab === "posts" ? "active" : ""}>Posts</span>
-        <span onClick={() => setTab("about")} className={tab === "about" ? "active" : ""}>About</span>
-        <span onClick={() => setTab("photos")} className={tab === "photos" ? "active" : ""}>Photos</span>
-        <span onClick={() => setTab("followers")} className={tab === "followers" ? "active" : ""}>Followers</span>
-      </div>
-
-      <div className="profile-content">
-        {tab === "posts" && <p>No posts yet</p>}
-        {tab === "about" && <p>{profile.bio || "No bio yet"}</p>}
-        {tab === "photos" && <p>Photos will appear here</p>}
-        {tab === "followers" && (
-          <p>{profile.followers?.length || 0} followers</p>
-        )}
-      </div>
-    </div>
+      {error && <p className="profile-error">{error}</p>}
+    </section>
   );
 }
-
-export default ProfileCard;

@@ -2,10 +2,20 @@ import { useState } from "react";
 
 function ForgotPassword({ onClose }) {
   const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  const submit = (event) => {
+    event.preventDefault();
+    if (!email.trim()) {
+      setMessage("Enter a valid email address.");
+      return;
+    }
+    setMessage("Password recovery flow is not enabled yet.");
+  };
 
   return (
     <div style={styles.overlay}>
-      <div style={styles.card}>
+      <form style={styles.card} onSubmit={submit}>
         <h2>Find your account</h2>
 
         <input
@@ -14,12 +24,12 @@ function ForgotPassword({ onClose }) {
           onChange={e => setEmail(e.target.value)}
         />
 
-        <button onClick={() => alert("Password recovery coming soon")}>
-          Search
-        </button>
+        <button type="submit">Search</button>
+
+        {message && <p style={styles.info}>{message}</p>}
 
         <p onClick={onClose} style={styles.link}>Cancel</p>
-      </div>
+      </form>
     </div>
   );
 }
@@ -43,6 +53,10 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 10
+  },
+  info: {
+    fontSize: 13,
+    color: "#334155"
   },
   link: {
     textAlign: "center",

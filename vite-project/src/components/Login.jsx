@@ -1,122 +1,79 @@
 import { useState } from "react";
-import API_BASE from "../utils/api";
+import { Link } from "react-router-dom";
+import { apiFetch, storeSession } from "../utils/api";
 import "./Login.css";
 
 export default function Login({ setUser }) {
-  const [isRegister, setIsRegister] = useState(false);
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const submit = async () => {
+  const submit = async (event) => {
+    event.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      if (isRegister) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          setError("Please enter a valid email address");
-          setLoading(false);
-          return;
-        }
-      }
-
-      const url = isRegister
-        ? `${API_BASE}/api/auth/register`
-        : `${API_BASE}/api/auth/login`;
-
-      const body = isRegister
-        ? { name, email, password }
-        : { email, password };
-
-      const res = await fetch(url, {
+      const payload = await apiFetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        body: {
+          email,
+          password
+        }
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || "Login failed");
-        setLoading(false);
-        return;
+      if (!payload?.user?._id) {
+        throw new Error("Unexpected login response");
       }
 
-      // 🔥 ALWAYS normalize the user object
-      const user = data.user ? data.user : data;
-
-      if (!user || !user._id) {
-        setError("Invalid login response");
-        setLoading(false);
-        return;
-      }
-
-      // 🔥 Store the correct object
-      localStorage.setItem("user", JSON.stringify(user));
-      setUser(user);
-
+      storeSession(payload);
+      setUser(payload.user);
     } catch (err) {
-      console.error(err);
-      setError("Unable to reach server");
+      setError(err.message || "Unable to sign in");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-page">
-      <div className="login-box">
-        <h2>{isRegister ? "Create Account" : "Login"}</h2>
+    <div className="auth-page">
+      <form className="auth-card" onSubmit={submit}>
+        <p className="auth-badge">Welcome back</p>
+        <h1>Sign in to PyrexxBook</h1>
 
-        {isRegister && (
-          <input
-            placeholder="Full Name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
-        )}
-
+        <label htmlFor="login-email">Email</label>
         <input
+          id="login-email"
           type="email"
-          placeholder="Email"
+          autoComplete="email"
+          placeholder="you@example.com"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
           required
         />
 
-        <div className="password-wrapper">
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
+        <label htmlFor="login-password">Password</label>
+        <input
+          id="login-password"
+          type="password"
+          autoComplete="current-password"
+          placeholder="Your password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
 
-          <span
-            className="password-eye"
-            onClick={() => setShowPassword(!showPassword)}
-          >
-            {showPassword ? "🙈" : "👁️"}
-          </span>
-        </div>
+        {error && <p className="auth-error">{error}</p>}
 
-        <button onClick={submit} disabled={loading}>
-          {loading ? "Please wait..." : isRegister ? "Create Account" : "Login"}
+        <button className="auth-submit" type="submit" disabled={loading}>
+          {loading ? "Signing in..." : "Sign in"}
         </button>
 
-        {error && <p style={{ color: "red" }}>{error}</p>}
-
-        <p className="toggle" onClick={() => setIsRegister(!isRegister)}>
-          {isRegister
-            ? "Already have an account? Login"
-            : "Don't have an account? Create one"}
+        <p className="auth-link-row">
+          New here? <Link to="/register">Create an account</Link>
         </p>
-      </div>
+      </form>
     </div>
   );
 }

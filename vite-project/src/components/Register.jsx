@@ -1,116 +1,111 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import API_BASE from "../utils/api";
+import { Link } from "react-router-dom";
+import { apiFetch, storeSession } from "../utils/api";
+import "./Login.css";
 
-function Register() {
+export default function Register({ setUser }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
-  const register = async (e) => {
-    e.preventDefault();
+  const submit = async (event) => {
+    event.preventDefault();
+    setError("");
 
-    if (!name || !email || !password) {
-      return setError("All fields are required");
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      setError("");
-
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
+      const payload = await apiFetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
+        body: {
+          name,
+          email,
+          password
+        }
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Registration failed");
+      if (!payload?.user?._id) {
+        throw new Error("Unexpected registration response");
       }
 
-      // Store only the user object
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      navigate("/");
+      storeSession(payload);
+      setUser(payload.user);
     } catch (err) {
-      setError(err.message || "Server not responding");
+      setError(err.message || "Unable to create account");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={styles.page}>
-      <form style={styles.card} onSubmit={register}>
-        <h2>Create Account</h2>
+    <div className="auth-page">
+      <form className="auth-card" onSubmit={submit}>
+        <p className="auth-badge">Join now</p>
+        <h1>Create your account</h1>
 
-        {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
-
+        <label htmlFor="register-name">Full name</label>
         <input
-          placeholder="Full name"
+          id="register-name"
+          placeholder="Your full name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(event) => setName(event.target.value)}
           required
         />
 
+        <label htmlFor="register-email">Email</label>
         <input
-          placeholder="Email"
+          id="register-email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
           required
         />
 
+        <label htmlFor="register-password">Password</label>
         <input
+          id="register-password"
           type="password"
-          placeholder="Password"
+          autoComplete="new-password"
+          placeholder="Minimum 6 characters"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(event) => setPassword(event.target.value)}
           required
         />
 
-        <button disabled={loading}>
-          {loading ? "Creating..." : "Sign Up"}
+        <label htmlFor="register-confirm">Confirm password</label>
+        <input
+          id="register-confirm"
+          type="password"
+          autoComplete="new-password"
+          placeholder="Re-enter password"
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          required
+        />
+
+        {error && <p className="auth-error">{error}</p>}
+
+        <button className="auth-submit" type="submit" disabled={loading}>
+          {loading ? "Creating..." : "Create account"}
         </button>
 
-        <p
-          onClick={() => navigate("/login")}
-          style={styles.link}
-        >
-          Already have an account? Log in
+        <p className="auth-link-row">
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </form>
     </div>
   );
 }
-
-export default Register;
-
-const styles = {
-  page: {
-    height: "100vh",
-    background: "#f0f2f5",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center"
-  },
-  card: {
-    background: "white",
-    padding: 30,
-    borderRadius: 10,
-    width: 320,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10
-  },
-  link: {
-    marginTop: 10,
-    textAlign: "center",
-    color: "#1877f2",
-    cursor: "pointer"
-  }
-};

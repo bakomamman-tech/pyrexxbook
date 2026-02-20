@@ -1,102 +1,95 @@
-.login-page {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #f5f6fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
 }
 
-/* Full page center */
-body {
-  margin: 0;
-  padding: 0;
-  background: #f5f6fa;
+.auth-card {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 30px;
+  border-radius: 24px;
+  border: 1px solid var(--line-strong);
+  background:
+    radial-gradient(circle at 0 0, rgba(249, 115, 22, 0.12), transparent 45%),
+    var(--bg-panel-strong);
+  box-shadow: var(--shadow-soft);
 }
 
-.login-box {
-  width: 100%;
-  max-width: 360px;
-  margin: 0 auto;
-  margin-top: 10vh;
-  background: #fff;
-  padding: 35px;
-  border-radius: 14px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-  text-align: center;
+.auth-badge {
+  width: fit-content;
+  padding: 6px 12px;
+  border: 1px solid rgba(249, 115, 22, 0.36);
+  border-radius: 999px;
+  color: #fed7aa;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-/* Title */
-.login-box h2 {
-  margin-bottom: 25px;
-  font-size: 30px;
-  color: #C3005E;
-  font-weight: bold;
+.auth-card h1 {
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  line-height: 1.24;
 }
 
-/* Inputs */
-.login-box input {
-  width: 100%;
-  padding: 13px;
-  margin-bottom: 14px;
+.auth-card label {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.auth-card input {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--text-primary);
+  padding: 12px 14px;
+}
+
+.auth-card input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.auth-error {
+  color: #fecdd3;
+  background: rgba(136, 19, 55, 0.28);
+  border: 1px solid rgba(251, 113, 133, 0.36);
   border-radius: 10px;
-  border: 1px solid #ddd;
-  font-size: 16px;
-  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 0.88rem;
 }
 
-/* Password wrapper for eye */
-.password-wrapper {
-  position: relative;
-  width: 100%;
+.auth-submit {
+  margin-top: 6px;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-weight: 700;
+  color: #101827;
+  background: linear-gradient(92deg, #fb923c, #facc15);
 }
 
-/* Add space for the eye */
-.password-wrapper input {
-  padding-right: 45px;
+.auth-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
-/* Eye icon */
-.password-eye {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  font-size: 18px;
-  user-select: none;
-  opacity: 0.7;
+.auth-link-row {
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
-.password-eye:hover {
-  opacity: 1;
+.auth-link-row a {
+  color: #fcd34d;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
 }
 
-/* Button */
-.login-box button {
-  width: 100%;
-  padding: 13px;
-  background: #C3005E;
-  border: none;
-  color: white;
-  font-size: 17px;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-.login-box button:hover {
-  background: #a0004d;
-}
-
-/* Toggle text */
-.login-box .toggle {
-  margin-top: 18px;
-  font-size: 17px;
-  color: #0066ff;
-  cursor: pointer;
+@media (max-width: 520px) {
+  .auth-card {
+    padding: 24px 18px;
+    border-radius: 18px;
+  }
 }

@@ -1,67 +1,56 @@
-# PyrexxBook  
-A full-stack social media platform with real-time chat, stories, and secure authentication.
+# PyrexxBook
 
-🔗 Live App: https://pyrexxbook-kurah.onrender.com
+PyrexxBook is a full-stack social platform with:
+- JWT authentication (access + refresh tokens)
+- Real-time chat via Socket.IO
+- Stories that expire in 24 hours
+- Feed with posts, likes, and comments
 
-## 🚀 Why PyrexxBook?
-Most beginner social media apps lack real-time features, scalability, and secure authentication.  
-PyrexxBook solves this by providing a modern social platform built with production-level technologies.
+## Stack
+- Frontend: React + Vite
+- Backend: Node.js + Express + Socket.IO
+- Database: MongoDB + Mongoose
 
----
+## Local setup
 
-## ✨ Features
-- User authentication (login & signup)
-- Real-time chat using Socket.IO
-- Stories (auto-delete after 24 hours)
-- Friend requests & followers
-- Profile customization
-- Image uploads
-- Secure password hashing
-- Online status & typing indicators
-
----
-
-## 🛠 Tech Stack
-**Frontend:** React, Vite, CSS  
-**Backend:** Node.js, Express  
-**Database:** MongoDB  
-**Real-time:** Socket.IO  
-**Authentication:** JWT, bcrypt  
-**Hosting:** Render  
-
----
-
-## ⚙️ Installation (Run Locally)
-
+1. Install dependencies:
 ```bash
-git clone https://github.com/bakomamman-tech/pyrexxbook.git
-cd pyrexxbook
 npm install
-cd server
-npm install
+npm install --prefix server
+npm install --prefix vite-project
+```
+
+2. Configure environment variables in `.env`:
+```env
+MONGO_URI=mongodb://127.0.0.1:27017/pyrexxbook
+CLIENT_URL=http://localhost:5173
+JWT_ACCESS_SECRET=replace_with_secure_secret
+JWT_REFRESH_SECRET=replace_with_secure_secret
+EMAIL_USER=optional_for_otp
+EMAIL_PASS=optional_for_otp
+PORT=5000
+```
+
+Optional frontend `.env` (inside `vite-project/`) for production API base:
+```env
+VITE_API_URL=https://your-api-domain.com
+VITE_DEV_PROXY_TARGET=http://localhost:5000
+```
+
+3. Run apps:
+```bash
+npm run dev:client
+npm run dev:server
+```
+
+## Production build
+
+Build frontend and copy to backend static folder:
+```bash
+npm run build
+```
+
+Start server:
+```bash
 npm start
-
-pyrexxbook/
-├── client/
-├── server/
-│   ├── models/
-│   ├── routes/
-│   ├── uploads/
-
-
-What I Learned
-
-Building real-time systems with Socket.IO
-
-Designing REST APIs
-
-Implementing secure authentication
-
-Deploying full-stack apps to production
-
-Author
-
-Stephen Daniel Kurah (Pyrexx)
-Full-Stack Developer
-Nigeria 🇳🇬
-
+```

@@ -1,97 +1,73 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-/* Light pink outer background */
-body {
-  background: #F8E6F1;
-}
-
-/* Main app wrapper */
-.app {
+.app-shell {
   min-height: 100vh;
-  background: #F8E6F1;
-  overflow-x: hidden; /* 🚨 blocks any horizontal bleed */
 }
 
-/* Full-width content area under navbar */
-.app-body {
-  display: flex;
-  margin-top: 95px; /* match navbar height */
-  width: 100%;
-  background: #F0F2F5;
-  padding: 20px 40px;
-  overflow-x: hidden; /* 🚨 prevents layout overflow */
+.app-main {
+  width: min(1420px, 100%);
+  margin: 0 auto;
+  padding: 0 20px 24px;
 }
 
-/* Centered Facebook-style container */
-.app-inner {
-  display: flex;
-  width: 100%;
-  max-width: 1400px;
-  margin: auto;
+.app-main.is-auth {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 260px;
   gap: 20px;
-  overflow: hidden; /* 🚨 prevents children from leaking */
+  padding-top: 110px;
 }
 
-/* Sidebar (left) */
-.sidebar {
-  width: 250px;
-  background: white;
-  min-height: calc(100vh - 120px);
-  border-radius: 14px;
-  padding: 20px;
-  box-shadow: 0 2px 10px rgba(75, 43, 255, 0.05);
-  flex-shrink: 0;
+.app-main.is-guest {
+  display: block;
+  min-height: 100vh;
+  padding: 0;
 }
 
-/* Middle feed */
-.feed-container {
-  flex: 4;
-  background: transparent;
-  max-width: 100%;
-  overflow: hidden;   /* 🚨 THIS is the main fix */
-  position: relative;
+.app-content {
+  min-width: 0;
 }
 
-/* Right panel */
-.rightbar {
-  width: 280px;
-  flex-shrink: 0;
+.app-right-rail {
+  position: sticky;
+  top: 110px;
+  align-self: start;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
 }
 
-/* Right panel cards */
-.rightbar p {
-  background: white;
-  padding: 12px;
-  border-radius: 14px;
-  margin-bottom: 10px;
-  box-shadow: 0 1px 6px rgba(0,0,0,.08);
-  cursor: pointer;
-  transition: 0.25s ease;
+.app-right-rail h3 {
+  color: var(--brand);
+  font-size: 1.05rem;
 }
 
-.rightbar p:hover {
-  background: #EEE9FF;
-  transform: translateY(-1px);
+.app-right-rail p {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
-/* Mobile view */
+@media (max-width: 1180px) {
+  .app-main.is-auth {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .app-right-rail {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) {
-  .rightbar {
-    display: none;
+  .app-main.is-auth {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 96px;
   }
 }
 
-@media (max-width: 700px) {
-  .sidebar {
-    display: none;
-  }
-
-  .app-body {
-    padding: 15px;
+@media (max-width: 640px) {
+  .app-main {
+    padding: 0 12px 18px;
   }
 }
