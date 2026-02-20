@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "build": "npm run build --prefix ../vite-project && node copyDist.js",
+    "build": "cd ../vite-project && npm install && npm run build && node ../server/copyDist.js",
     "start": "node server.js",
     "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
